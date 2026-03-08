@@ -32,10 +32,10 @@ sequenceDiagram
     Note right of RSC: reads BRAINSTORMING.md if present
     RSC-->>ORC: RESEARCH-FINDINGS.md
 
-    ORC->>PM: Create PRD
+    ORC->>PM: Create Feature Requirements
     PM-->>ORC: PRD.md
 
-    ORC->>UX: Create Design
+    ORC->>UX: Create UI/UX Design
     UX-->>ORC: DESIGN.md
 
     ORC->>ARC: Create Architecture
