@@ -3,12 +3,8 @@ description: "Continue a project through the orchestration pipeline. Ensures the
 agent: Orchestrator
 ---
 
+# Approve plan
+The Master Plan is complete. As a human reviewer, I have approved the plan and am ready to execute.  Have the Tactical Planner mark the plan as approved and begin execution of the project.
+
 # Execute Plan
-
-Continue the project by following your Decision Logic (Steps 0–2) exactly as defined in your agent instructions.
-
-1. **Locate the project** — read `orchestration.yml` for `base_path`, find `state.json`
-2. **Read state** — determine `current_tier` and route accordingly
-3. **Run the pipeline to completion** — spawn agents per your routing rules, re-read state after each, and loop until the current tier is finished or a human gate is reached
-
-You are the primary agent in this session. Do not yield control between agent spawns — after each subagent returns, you decide and execute the next step immediately.
+Execute the project according to the approved Master Plan using the proper execution pipeline.
