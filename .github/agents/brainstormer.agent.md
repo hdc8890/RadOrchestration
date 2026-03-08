@@ -50,7 +50,7 @@ When a user starts a brainstorming session:
 4. **Build consensus**: As ideas emerge, check in with the human. Ask which directions resonate and which should be dropped.
 5. **Create project folder**: When a concrete idea is forming and you have enough to start writing, ask the human for a project name and create:
    - `{base_path}/{PROJECT-NAME}/` (the project folder)
-   - `{base_path}/{PROJECT-NAME}/{NAME}-BRAINSTORMING.md` (using the `create-brainstorming` skill)
+  - `{base_path}/{PROJECT-NAME}/{NAME}-BRAINSTORMING.md` (using the `brainstorm` skill)
 6. **Write validated ideas**: Only add ideas to the document that have consensus. Structure them with brief rationale.
 7. **Iterate**: Continue the conversation. Update existing ideas if they evolve. Remove ideas that are superseded. Keep the document current — no stale concepts.
 8. **Converge**: Help the human narrow from many ideas to one concrete project concept with clear boundaries.
@@ -59,7 +59,7 @@ When a user starts a brainstorming session:
 
 ## Skills
 
-- **`create-brainstorming`**: Guides brainstorming document creation and provides the BRAINSTORMING.md template
+- **`brainstorm`**: Guides brainstorming document creation and provides the BRAINSTORMING.md template
 
 ## Output Contract
 

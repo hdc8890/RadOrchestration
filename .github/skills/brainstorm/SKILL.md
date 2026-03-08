@@ -1,9 +1,9 @@
 ---
-name: create-brainstorming
+name: brainstorm
 description: 'Brainstorm and refine project ideas through collaborative ideation. Use when exploring problem spaces, validating concepts, building consensus on what to build, or creating the initial project idea document. Produces a structured brainstorming document with validated ideas, scope boundaries, and problem statements that feed into Research and PRD creation.'
 ---
 
-# Create Brainstorming Document
+# Brainstorm
 
 Guide a collaborative brainstorming session and produce a structured BRAINSTORMING.md document. This is the first document in a project — it captures the refined, consensus-driven project idea that feeds into Research and PRD creation.
 
