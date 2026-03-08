@@ -1,0 +1,66 @@
+# Copilot Workspace Instructions
+
+> These instructions are always loaded by GitHub Copilot in this workspace.
+
+## Orchestration System
+
+This workspace contains a **document-driven agent orchestration system** built on Copilot's native primitives (custom agents, skills, prompt files, and instruction files). The system takes software projects from idea through planning, execution, and review using 8 specialized agents.
+
+### How It Works
+
+- **Start a project**: Use `@Orchestrator` with a project idea. The Orchestrator reads state and spawns specialized agents to advance the pipeline.
+- **Continue a project**: Use `@Orchestrator` and ask to continue. It reads `state.json` to determine the next step automatically.
+- **Check status**: Use `@Orchestrator` and ask for project status. It reads `STATUS.md` for a human-readable summary.
+
+### Agents
+
+| Agent | Purpose |
+|-------|---------|
+| `@Orchestrator` | Coordinates the pipeline — spawns agents, reads state, asks human questions. **Never writes files.** |
+| `@Research` | Explores codebase and external sources to gather context |
+| `@Product Manager` | Creates PRDs from research findings |
+| `@UX Designer` | Creates design documents from PRDs |
+| `@Architect` | Creates architecture docs and master plans |
+| `@Tactical Planner` | Breaks phases into tasks, manages state — **sole writer of state.json and STATUS.md** |
+| `@Coder` | Executes coding tasks from self-contained task handoffs |
+| `@Reviewer` | Reviews code and phases against planning documents |
+
+### Pipeline
+
+```
+Planning:  Idea → Research → PRD → Design → Architecture → Master Plan → Human Approval
+Execution: Phase Plan → Task Handoffs → Code → Review → (loop) → Phase Review
+Final:     Comprehensive Review → Human Approval → Complete
+```
+
+### Key Rules
+
+1. **Always start with `@Orchestrator`** — it determines the correct next step from project state.
+2. **The Coder reads ONLY its Task Handoff** — everything it needs is self-contained in that one document.
+3. **Only the Tactical Planner writes `state.json` and `STATUS.md`** — no other agent touches these.
+4. **Human gates** are enforced after planning (Master Plan review) and after final review.
+5. **Documents are the interface** — agents communicate through structured markdown files, never through shared state or memory.
+
+### Configuration
+
+System configuration lives in `.github/orchestration.yml`. It controls:
+- Project storage paths (`projects.base_path`)
+- Pipeline limits (max phases, tasks, retries)
+- Error severity classification (critical vs. minor)
+- Human gate defaults
+- Git strategy
+
+### Project Files
+
+Project artifacts are stored under the path configured in `orchestration.yml` → `projects.base_path` (default: `.github/projects/`). Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/`.
+
+Contents:
+- Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md`
+- Execution docs: `phases/`, `tasks/`, `reports/`
+- State: `state.json`, `STATUS.md`
+
+### Naming Conventions
+
+- **Project files**: `SCREAMING-CASE` with project prefix — `MYAPP-PRD.md`, `MYAPP-TASK-P01-T03-AUTH.md`
+- **Skills**: lowercase with hyphens — `.github/skills/create-prd/`
+- **Agents**: lowercase with hyphens — `.github/agents/orchestrator.agent.md`

@@ -1,0 +1,51 @@
+# .github/orchestration.yml
+# Orchestration System Configuration
+# -----------------------------------
+
+version: "1.0"
+
+# ─── Project Storage ───────────────────────────────────────────────
+projects:
+  base_path: ".github/projects"          # Where project folders are created
+  naming: "SCREAMING_CASE"               # SCREAMING_CASE | lowercase | numbered
+
+# ─── Pipeline Limits (Scope Guards) ───────────────────────────────
+limits:
+  max_phases: 10                         # Maximum phases per project
+  max_tasks_per_phase: 8                 # Maximum tasks per phase
+  max_retries_per_task: 2                # Auto-retries before escalation
+  max_consecutive_review_rejections: 3   # Reviewer rejects before human escalation
+
+# ─── Error Handling ────────────────────────────────────────────────
+errors:
+  severity:
+    critical:                            # Fail-fast → stop pipeline → human
+      - "build_failure"
+      - "security_vulnerability"
+      - "architectural_violation"
+      - "data_loss_risk"
+    minor:                               # Auto-retry via corrective task
+      - "test_failure"
+      - "lint_error"
+      - "review_suggestion"
+      - "missing_test_coverage"
+      - "style_violation"
+  on_critical: "halt"                    # halt | report_and_continue
+  on_minor: "retry"                      # retry | halt | skip
+
+# ─── Git Strategy ──────────────────────────────────────────────────
+git:
+  strategy: "single_branch"             # single_branch | branch_per_phase | branch_per_task
+  branch_prefix: "orch/"                # Prefix for orchestration branches
+  commit_prefix: "[orch]"               # Prefix for commit messages
+  auto_commit: true                     # Agents commit after task completion
+
+# ─── Human Gate Defaults ───────────────────────────────────────────
+human_gates:
+  after_planning: true                   # Always gate after master plan (hard default)
+  execution_mode: "ask"                  # ask | phase | task | autonomous
+  after_final_review: true               # Always gate after final review (hard default)
+
+# ─── Notes ─────────────────────────────────────────────────────────
+# Model selection is configured per-agent in .agent.md frontmatter.
+# See .github/agents/*.agent.md → `model` field.
