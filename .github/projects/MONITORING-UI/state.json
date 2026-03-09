@@ -1,0 +1,46 @@
+{
+  "$schema": "orchestration-state-v2",
+  "project": {
+    "name": "MONITORING-UI",
+    "description": "A real-time Next.js monitoring dashboard for the orchestration system — featuring project switcher sidebar, live dashboard via SSE + chokidar, inline document viewer, and orchestration.yml config viewer. Read-only, local-only, using shadcn/ui and Tailwind CSS.",
+    "created": "2026-03-09T00:00:00Z",
+    "updated": "2026-03-09T14:00:00Z",
+    "brainstorming_doc": "MONITORING-UI-BRAINSTORMING.md"
+  },
+  "pipeline": {
+    "current_tier": "planning",
+    "human_gate_mode": "ask"
+  },
+  "planning": {
+    "status": "in_progress",
+    "steps": {
+      "research":     { "status": "complete", "output": "MONITORING-UI-RESEARCH-FINDINGS.md" },
+      "prd":          { "status": "complete", "output": "MONITORING-UI-PRD.md" },
+      "design":       { "status": "complete", "output": "MONITORING-UI-DESIGN.md" },
+      "architecture": { "status": "complete", "output": "MONITORING-UI-ARCHITECTURE.md" },
+      "master_plan":  { "status": "complete", "output": "MONITORING-UI-MASTER-PLAN.md" }
+    },
+    "human_approved": false
+  },
+  "execution": {
+    "status": "not_started",
+    "current_phase": 0,
+    "total_phases": 0,
+    "phases": []
+  },
+  "final_review": {
+    "status": "not_started",
+    "report_doc": null,
+    "human_approved": false
+  },
+  "errors": {
+    "total_retries": 0,
+    "total_halts": 0,
+    "active_blockers": []
+  },
+  "limits": {
+    "max_phases": 10,
+    "max_tasks_per_phase": 8,
+    "max_retries_per_task": 2
+  }
+}
