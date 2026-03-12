@@ -51,9 +51,9 @@ that visualizes project state, pipeline progress, documents, and configuration.
 </div>
 
 Track active projects, drill into phase and task execution, read rendered planning
-documents, and view configuration — all updated in real time via server-sent events.
-The project displayed in the screenshot was the project used to build the UI in 1-shot. 
-(See: [Monitoring UI Project Plan](.github/projects/MONITORING-UI/))
+documents, and view configuration — all updated in real time by reading the state.json 
+file in each project.  The project displayed in the screenshot was the project used to 
+build the UI in 1-shot.
 
 [Learn more about the dashboard →](docs/dashboard.md)
 
