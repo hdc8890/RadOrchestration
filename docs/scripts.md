@@ -16,7 +16,7 @@ LLMs still handle all judgment-requiring work: coding, reviewing, designing, arc
 ## Architecture
 
 ```
-src/
+.github/orchestration/scripts/
 ├── lib/
 │   ├── constants.js           # Shared enums — leaf module, zero dependencies
 │   ├── resolver.js            # Next-Action Resolver — pure function
@@ -36,7 +36,7 @@ Domain modules never import filesystem utilities directly. The triage engine use
 
 ## Shared Constants
 
-`src/lib/constants.js` is the single source of truth for all enum values. Every other module imports from it. All enums are `Object.freeze()`-d to prevent runtime mutation.
+`.github/orchestration/scripts/lib/constants.js` is the single source of truth for all enum values. Every other module imports from it. All enums are `Object.freeze()`-d to prevent runtime mutation.
 
 ### Enum Reference
 
@@ -66,7 +66,7 @@ The resolver is a **pure function** that takes `state.json` as input and returns
 ### CLI Usage
 
 ```bash
-node src/next-action.js --state path/to/state.json
+node .github/orchestration/scripts/next-action.js --state path/to/state.json
 # Optional: --config path/to/orchestration.yml (for human_gate_mode)
 ```
 
@@ -88,7 +88,7 @@ node src/next-action.js --state path/to/state.json
 
 ### How the Orchestrator Uses It
 
-1. Call `node src/next-action.js --state <path>`
+1. Call `node .github/orchestration/scripts/next-action.js --state <path>`
 2. Parse the JSON output
 3. Pattern-match on `result.action` to determine which agent to spawn
 4. Track `triage_attempts` counter: increment on `triage_task`/`triage_phase`, reset on `advance_task`/`advance_phase`, halt if > 1
@@ -167,10 +167,10 @@ The triage engine evaluates review verdicts against deterministic decision table
 
 ```bash
 # Task-level triage
-node src/triage.js --state path/to/state.json --level task --project-dir path/to/project/
+node .github/orchestration/scripts/triage.js --state path/to/state.json --level task --project-dir path/to/project/
 
 # Phase-level triage
-node src/triage.js --state path/to/state.json --level phase --project-dir path/to/project/
+node .github/orchestration/scripts/triage.js --state path/to/state.json --level phase --project-dir path/to/project/
 ```
 
 ### Output
@@ -191,8 +191,8 @@ node src/triage.js --state path/to/state.json --level phase --project-dir path/t
 
 The Tactical Planner calls the triage script instead of interpreting decision tables in prose:
 
-- **Mode 3 (phase triage):** `node src/triage.js --state <path> --level phase --project-dir <dir>`
-- **Mode 4 (task triage):** `node src/triage.js --state <path> --level task --project-dir <dir>`
+- **Mode 3 (phase triage):** `node .github/orchestration/scripts/triage.js --state <path> --level phase --project-dir <dir>`
+- **Mode 4 (task triage):** `node .github/orchestration/scripts/triage.js --state <path> --level task --project-dir <dir>`
 
 ### Task-Level Decision Table (11 rows)
 
@@ -224,7 +224,7 @@ The triage engine evaluates these conditions in order (first match wins):
 
 ### Write Behavior
 
-The triage CLI entry point (`src/triage.js`) — not the domain function — performs the `state.json` write:
+The triage CLI entry point (`.github/orchestration/scripts/triage.js`) — not the domain function — performs the `state.json` write:
 
 1. Read current `state.json`
 2. Verify target verdict/action fields are `null` (immutability check)
@@ -240,7 +240,7 @@ The validator checks a proposed `state.json` against all 15 documented invariant
 ### CLI Usage
 
 ```bash
-node src/validate-state.js --current path/to/current-state.json --proposed path/to/proposed-state.json
+node .github/orchestration/scripts/validate-state.js --current path/to/current-state.json --proposed path/to/proposed-state.json
 ```
 
 ### Output (valid)
@@ -277,7 +277,7 @@ Exit code: `1`
 Before every `state.json` write, the Tactical Planner:
 
 1. Writes the proposed state to a temporary file
-2. Calls `node src/validate-state.js --current <current> --proposed <proposed>`
+2. Calls `node .github/orchestration/scripts/validate-state.js --current <current> --proposed <proposed>`
 3. On `valid: true` — commits the write
 4. On `valid: false` — records errors in `errors.active_blockers`, halts, does NOT commit
 
@@ -322,13 +322,13 @@ All scripts have comprehensive test suites using `node:test`:
 
 ```bash
 # Run all tests
-node tests/constants.test.js
-node tests/resolver.test.js
-node tests/state-validator.test.js
-node tests/triage-engine.test.js
+node .github/orchestration/scripts/tests/constants.test.js
+node .github/orchestration/scripts/tests/resolver.test.js
+node .github/orchestration/scripts/tests/state-validator.test.js
+node .github/orchestration/scripts/tests/triage-engine.test.js
 
 # Or validate-state CLI end-to-end
-node tests/validate-state.test.js
+node .github/orchestration/scripts/tests/validate-state.test.js
 ```
 
 Test coverage targets:

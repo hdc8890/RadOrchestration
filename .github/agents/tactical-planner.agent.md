@@ -73,7 +73,7 @@ When spawned to update state after an event:
 3. **Update `project.updated`** timestamp
 4. **Validate proposed state** — pre-write check:
    - Write proposed state to a temporary file (e.g., `state.json.proposed`)
-   - Call: `node src/validate-state.js --current {state_path} --proposed {temp_path}`
+   - Call: `node .github/orchestration/scripts/validate-state.js --current {state_path} --proposed {temp_path}`
    - Parse JSON stdout: `result = JSON.parse(stdout)`
    - **If `result.valid === true`**: Commit — replace `state.json` with the proposed file
    - **If `result.valid === false`**: Do NOT commit the write. Record each entry from `result.errors` in `errors.active_blockers`. Halt pipeline. Delete temp file.
@@ -102,7 +102,7 @@ When spawned to plan a phase:
 6. **IF `state.json → phase.phase_review != null`**:
    Read the Phase Review at the path from `state.json → phase.phase_review`
 7. **Execute triage script** (phase-level):
-   - Call: `node src/triage.js --state {state_path} --level phase --project-dir {project_dir}`
+   - Call: `node .github/orchestration/scripts/triage.js --state {state_path} --level phase --project-dir {project_dir}`
    - Parse JSON stdout: `result = JSON.parse(stdout)`
    - **If `result.success === true`**: The script has written `phase_review_verdict` and `phase_review_action` to `state.json`. Use `result.action` to determine the routing in step 8.
    - **If `result.success === false`**: Record `result.error` in `errors.active_blockers`, halt pipeline — do NOT proceed to step 8.
@@ -128,7 +128,7 @@ When spawned to plan a phase:
 9. **Update `state.json`** (with pre-write validation):
    - Prepare proposed state: create phase entry with tasks, set phase status to `"in_progress"`, update `project.updated` timestamp
    - Write proposed state to a temporary file (e.g., `state.json.proposed`)
-   - Call: `node src/validate-state.js --current {state_path} --proposed {temp_path}`
+   - Call: `node .github/orchestration/scripts/validate-state.js --current {state_path} --proposed {temp_path}`
    - Parse JSON stdout: `result = JSON.parse(stdout)`
    - **If `result.valid === true`**: Commit — replace `state.json` with the proposed file
    - **If `result.valid === false`**: Do NOT commit the write. Record each entry from `result.errors` in `errors.active_blockers`. Halt pipeline. Delete temp file.
@@ -144,7 +144,7 @@ When spawned to create a task handoff:
 5. **IF `state.json → task.review_doc != null`** (for the relevant completed task):
    Read the Code Review at the path from `state.json → task.review_doc`
 6. **Execute triage script** (task-level):
-   - Call: `node src/triage.js --state {state_path} --level task --project-dir {project_dir}`
+   - Call: `node .github/orchestration/scripts/triage.js --state {state_path} --level task --project-dir {project_dir}`
    - Parse JSON stdout: `result = JSON.parse(stdout)`
    - **If `result.success === true`**: The script has written `review_verdict` and `review_action` to `state.json`. Use `result.action` to determine the routing in step 7.
    - **If `result.success === false`**: Record `result.error` in `errors.active_blockers`, halt pipeline — do NOT proceed to step 7.
@@ -175,7 +175,7 @@ When spawned to create a task handoff:
 8. **Update `state.json`** (with pre-write validation):
    - Prepare proposed state: set task `handoff_doc` path, update `project.updated` timestamp
    - Write proposed state to a temporary file (e.g., `state.json.proposed`)
-   - Call: `node src/validate-state.js --current {state_path} --proposed {temp_path}`
+   - Call: `node .github/orchestration/scripts/validate-state.js --current {state_path} --proposed {temp_path}`
    - Parse JSON stdout: `result = JSON.parse(stdout)`
    - **If `result.valid === true`**: Commit — replace `state.json` with the proposed file
    - **If `result.valid === false`**: Do NOT commit the write. Record each entry from `result.errors` in `errors.active_blockers`. Halt pipeline. Delete temp file.
@@ -212,7 +212,7 @@ When spawned to generate a phase report after all tasks complete:
 13. **Update `state.json`** (with pre-write validation):
    - Prepare proposed state: set `phase_report` path, update `project.updated` timestamp
    - Write proposed state to a temporary file (e.g., `state.json.proposed`)
-   - Call: `node src/validate-state.js --current {state_path} --proposed {temp_path}`
+   - Call: `node .github/orchestration/scripts/validate-state.js --current {state_path} --proposed {temp_path}`
    - Parse JSON stdout: `result = JSON.parse(stdout)`
    - **If `result.valid === true`**: Commit — replace `state.json` with the proposed file
    - **If `result.valid === false`**: Do NOT commit the write. Record each entry from `result.errors` in `errors.active_blockers`. Halt pipeline. Delete temp file.
@@ -222,7 +222,7 @@ When spawned to generate a phase report after all tasks complete:
 - **`create-phase-plan`**: Guides phase planning and provides template
 - **`create-task-handoff`**: Guides task handoff creation and provides template
 - **`generate-phase-report`**: Guides phase report generation and provides template
-- **`triage-report`**: Decision tables for task-level and phase-level triage — **documentation-only reference**. The authoritative executor is `src/triage.js`. The tables remain for human readability and as the specification the script implements. Agents call the script, not the tables directly.
+- **`triage-report`**: Decision tables for task-level and phase-level triage — **documentation-only reference**. The authoritative executor is `.github/orchestration/scripts/triage.js`. The tables remain for human readability and as the specification the script implements. Agents call the script, not the tables directly.
 
 ## Output Contract
 

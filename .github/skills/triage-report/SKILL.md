@@ -5,7 +5,7 @@ description: 'Triage task reports and phase reviews to determine the Tactical Pl
 
 # Triage Report
 
-> **⚠️ Execution Authority Notice**: The decision tables in this document are **documentation-only**. The authoritative executor is `src/triage.js`. The script implements the exact logic described in the tables below. These tables remain for human readability and as the specification the script was built from. Agents MUST call the script — do NOT interpret these tables directly.
+> **⚠️ Execution Authority Notice**: The decision tables in this document are **documentation-only**. The authoritative executor is `.github/orchestration/scripts/triage.js`. The script implements the exact logic described in the tables below. These tables remain for human readability and as the specification the script was built from. Agents MUST call the script — do NOT interpret these tables directly.
 
 Triage task reports and review documents to determine the Tactical Planner's next action. This skill encodes exhaustive, deterministic decision tables — every input combination maps to exactly one action. No row requires judgment.
 

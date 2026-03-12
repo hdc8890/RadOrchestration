@@ -21,7 +21,7 @@ This guide walks you through setting up the orchestration system and running you
 
 3. **Copy into your project** (if using in an existing workspace)
 
-   Copy the `.github/` and `src/` directories into the root of your target project. The `.github/` folder contains all agents, skills, instructions, and configuration. The `src/` folder contains the deterministic CLI scripts.
+   Copy the `.github/` directory into the root of your target project. It contains all agents, skills, instructions, configuration, and orchestration scripts.
 
 4. **Configure the system**
 

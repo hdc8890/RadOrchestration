@@ -152,7 +152,7 @@ In verbose mode (`--verbose`), passing results are also printed. In quiet mode (
             ├── fs-helpers.js       ← file system utilities
             └── yaml-parser.js      ← safe YAML parser wrapper
 
-tests/                           ← test suite (workspace root)
+.github/orchestration/scripts/tests/   ← test suite
     agents.test.js
     config.test.js
     cross-refs.test.js
@@ -168,12 +168,12 @@ Tests use Node's built-in `node:test` runner — no external test framework is r
 
 ```bash
 # Run all tests
-node tests/agents.test.js
-node tests/skills.test.js
+node .github/orchestration/scripts/tests/agents.test.js
+node .github/orchestration/scripts/tests/skills.test.js
 # ... etc.
 
 # Or run them all at once (PowerShell)
-$files = Get-ChildItem tests/*.test.js | ForEach-Object { $_.FullName }
+$files = Get-ChildItem .github/orchestration/scripts/tests/*.test.js | ForEach-Object { $_.FullName }
 foreach ($f in $files) { node $f }
 ```
 

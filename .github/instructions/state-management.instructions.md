@@ -39,12 +39,12 @@ Configured in `orchestration.yml`:
 
 ## Pre-Write Validation
 
-The Tactical Planner MUST call `src/validate-state.js` before every `state.json` write. No exceptions.
+The Tactical Planner MUST call `.github/orchestration/scripts/validate-state.js` before every `state.json` write. No exceptions.
 
 ### CLI Interface
 
 ```
-node src/validate-state.js --current <current-state.json> --proposed <proposed-state.json>
+node .github/orchestration/scripts/validate-state.js --current <current-state.json> --proposed <proposed-state.json>
 ```
 
 | Flag | Required | Description |
@@ -87,7 +87,7 @@ Every `state.json` write in the Tactical Planner (Modes 2, 3, 4, and 5) must fol
 
 1. Prepare the proposed state as a complete JSON object
 2. Write proposed state to a temporary file (e.g., `state.json.proposed`)
-3. Call: `node src/validate-state.js --current <path-to-current-state.json> --proposed <path-to-temp-file>`
+3. Call: `node .github/orchestration/scripts/validate-state.js --current <path-to-current-state.json> --proposed <path-to-temp-file>`
 4. Parse JSON stdout: `result = JSON.parse(stdout)`
 5. **If `result.valid === true`**: Commit — replace `state.json` with the proposed file
 6. **If `result.valid === false`**: Do NOT commit the write. Record each entry from `result.errors` in `state.json → errors.active_blockers`. Halt the pipeline. Delete the temp file.

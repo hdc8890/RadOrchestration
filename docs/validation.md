@@ -133,7 +133,7 @@ node .github/skills/validate-orchestration/scripts/validate-orchestration.js --n
 For runtime state validation (checking `state.json` transitions), use the separate [State Transition Validator](scripts.md):
 
 ```bash
-node src/validate-state.js --current path/to/current.json --proposed path/to/proposed.json
+node .github/orchestration/scripts/validate-state.js --current path/to/current.json --proposed path/to/proposed.json
 ```
 
 This checks all 15 invariants (V1–V15) and is called by the Tactical Planner before every state write. See [Deterministic Scripts](scripts.md) for details.

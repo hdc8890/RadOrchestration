@@ -128,7 +128,7 @@ Then follow the **script-based execution loop**:
 Run the Next-Action Resolver script to determine the next action:
 
 ```
-node src/next-action.js --state {base_path}/{PROJECT-NAME}/state.json --config .github/orchestration.yml
+node .github/orchestration/scripts/next-action.js --state {base_path}/{PROJECT-NAME}/state.json --config .github/orchestration.yml
 ```
 
 - `--state` is required — always pass the path to the project's `state.json`
@@ -193,7 +193,7 @@ Pattern-match on `result.action` and perform the corresponding action. All 35 `N
 | `halt_task_failed` | Spawn **Tactical Planner** | Halt pipeline — task failed with critical severity or exceeded max retries. Record in `errors.active_blockers`. Then display STATUS.md to human. |
 | `spawn_code_reviewer` | Spawn **Reviewer** | Code review for the completed task. Then spawn Tactical Planner to update state (record `review_doc` path). Re-read state and re-run script. |
 | `update_state_from_review` | Spawn **Tactical Planner** (Mode 2) | Update state.json with the code review document path. Then re-read state and re-run script. |
-| `triage_task` | **Check `triage_attempts`**, then Spawn **Tactical Planner** (Mode 4) | **BEFORE spawning**: increment `triage_attempts`. If `triage_attempts > 1`: do NOT spawn — instead halt pipeline (see `halt_triage_invariant`). Otherwise: spawn Tactical Planner with instruction to read the code review at the task's `review_doc` path, execute triage (call `node src/triage.js --level task`), write `review_verdict` and `review_action` to state.json, then produce the next Task Handoff. Re-read state and re-run script. |
+| `triage_task` | **Check `triage_attempts`**, then Spawn **Tactical Planner** (Mode 4) | **BEFORE spawning**: increment `triage_attempts`. If `triage_attempts > 1`: do NOT spawn — instead halt pipeline (see `halt_triage_invariant`). Otherwise: spawn Tactical Planner with instruction to read the code review at the task's `review_doc` path, execute triage (call `node .github/orchestration/scripts/triage.js --level task`), write `review_verdict` and `review_action` to state.json, then produce the next Task Handoff. Re-read state and re-run script. |
 | `halt_triage_invariant` | Spawn **Tactical Planner** | Halt pipeline with error: "Triage invariant still violated after re-spawn. review_doc is set but review_verdict is null. Pipeline halted — requires human intervention." Display STATUS.md to human. |
 | `retry_from_review` | Spawn **Tactical Planner** (Mode 4) | Create corrective Task Handoff to address `changes_requested` issues. Then spawn Coder. Then spawn Tactical Planner to update state. Re-read state and re-run script. |
 | `halt_from_review` | Spawn **Tactical Planner** | Halt pipeline — code review verdict is `rejected`. Record in `errors.active_blockers`. Display STATUS.md to human. |
@@ -202,7 +202,7 @@ Pattern-match on `result.action` and perform the corresponding action. All 35 `N
 | `generate_phase_report` | Spawn **Tactical Planner** (Mode 5) | Generate Phase Report for the completed phase. Then re-read state and re-run script. |
 | `spawn_phase_reviewer` | Spawn **Reviewer** | Phase review for the completed phase. Then spawn Tactical Planner to update state (record `phase_review` path). Re-read state and re-run script. |
 | `update_state_from_phase_review` | Spawn **Tactical Planner** (Mode 2) | Update state.json with the phase review document path. Then re-read state and re-run script. |
-| `triage_phase` | **Check `triage_attempts`**, then Spawn **Tactical Planner** (Mode 3) | **BEFORE spawning**: increment `triage_attempts`. If `triage_attempts > 1`: do NOT spawn — instead halt pipeline (see `halt_phase_triage_invariant`). Otherwise: spawn Tactical Planner with instruction to read the phase review at the phase's `phase_review` path, execute triage (call `node src/triage.js --level phase`), write `phase_review_verdict` and `phase_review_action` to state.json, then produce the Phase Plan for the next phase. Re-read state and re-run script. |
+| `triage_phase` | **Check `triage_attempts`**, then Spawn **Tactical Planner** (Mode 3) | **BEFORE spawning**: increment `triage_attempts`. If `triage_attempts > 1`: do NOT spawn — instead halt pipeline (see `halt_phase_triage_invariant`). Otherwise: spawn Tactical Planner with instruction to read the phase review at the phase's `phase_review` path, execute triage (call `node .github/orchestration/scripts/triage.js --level phase`), write `phase_review_verdict` and `phase_review_action` to state.json, then produce the Phase Plan for the next phase. Re-read state and re-run script. |
 | `halt_phase_triage_invariant` | Spawn **Tactical Planner** | Halt pipeline with error: "Phase triage invariant still violated after re-spawn. phase_review is set but phase_review_verdict is null. Pipeline halted — requires human intervention." Display STATUS.md to human. |
 | `gate_phase` | **Human Gate** | Show phase results to human. Wait for approval before continuing. Then re-read state and re-run script. |
 | `advance_phase` | Spawn **Tactical Planner** (Mode 2) | Advance to next phase. **Reset `triage_attempts` to 0.** Update state.json (increment `current_phase`). Re-read state and re-run script. |
@@ -217,7 +217,7 @@ Pattern-match on `result.action` and perform the corresponding action. All 35 `N
 After spawning the indicated agent per the mapping table above, the Orchestrator must:
 
 1. Re-read `state.json` (the spawned agent may have changed it)
-2. Call the script again: `node src/next-action.js --state {base_path}/{PROJECT-NAME}/state.json --config .github/orchestration.yml`
+2. Call the script again: `node .github/orchestration/scripts/next-action.js --state {base_path}/{PROJECT-NAME}/state.json --config .github/orchestration.yml`
 3. Parse the new result and repeat the pattern-match
 4. Continue until the script returns a **terminal action** (`display_complete` or `display_halted`) or a **human gate action** (`request_plan_approval`, `request_final_approval`, `gate_task`, `gate_phase`)
 

@@ -41,6 +41,22 @@ flowchart TD
     GATE2 --> DONE([✅ Complete])
 ```
 
+## Monitoring Dashboard
+
+The system includes a real-time monitoring dashboard — a Next.js web application
+that visualizes project state, pipeline progress, documents, and configuration.
+
+<div style="width: 1000px; height: 800px; margin: 0 auto; overflow: hidden;">
+    <img src="assets/dashboard-screenshot.png" object-fit: cover;">
+</div>
+
+Track active projects, drill into phase and task execution, read rendered planning
+documents, and view configuration — all updated in real time via server-sent events.
+The project displayed in the screenshot was the project used to build the UI in 1-shot. 
+(See: [Monitoring UI Project Plan](.github/projects/MONITORING-UI/))
+
+[Learn more about the dashboard →](docs/dashboard.md)
+
 ## Key Features
 
 ### Specialized Agents
@@ -99,7 +115,7 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 ### Quick Start
 
 1. Clone the repo and open in VS Code with GitHub Copilot
-2. Copy the `.github/` and `src/` directories into the root of your target project
+2. Copy the `.github/` directory into the root of your target project
 3. Run `/configure-system` to set up `orchestration.yml`
 4. *(Optional)* Use `@Brainstormer` to explore and refine your idea
 5. Use `@Orchestrator` with your project idea to start the pipeline
@@ -119,6 +135,7 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
 | [Deterministic Scripts](docs/scripts.md) | Next-Action Resolver, Triage Executor, State Validator CLIs |
 | [Validation](docs/validation.md) | The `validate-orchestration` CLI tool |
+| [Monitoring Dashboard](docs/dashboard.md) | Dashboard startup, features, data sources, real-time updates |
 
 ## Design Principles
 

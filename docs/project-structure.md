@@ -7,54 +7,51 @@ This page documents the file layout, naming conventions, document types, and sta
 ```
 .github/
 ├── agents/                    # 9 agent definitions
-│   ├── orchestrator.agent.md
-│   ├── brainstormer.agent.md
-│   ├── research.agent.md
-│   ├── product-manager.agent.md
-│   ├── ux-designer.agent.md
-│   ├── architect.agent.md
-│   ├── tactical-planner.agent.md
-│   ├── coder.agent.md
-│   └── reviewer.agent.md
+│   └── ...
 ├── skills/                    # 17 skill bundles
-│   ├── brainstorm/
-│   ├── research-codebase/
-│   ├── create-prd/
-│   ├── create-design/
-│   ├── create-architecture/
-│   ├── create-master-plan/
-│   ├── create-phase-plan/
-│   ├── create-task-handoff/
-│   ├── generate-task-report/
-│   ├── generate-phase-report/
-│   ├── run-tests/
-│   ├── review-code/
-│   ├── review-phase/
-│   ├── triage-report/
-│   ├── create-agent/
-│   ├── create-skill/
-│   └── validate-orchestration/
+│   └── ...
 ├── instructions/              # Scoped instruction files
-│   ├── project-docs.instructions.md
-│   └── state-management.instructions.md
+│   └── ...
 ├── prompts/                   # Utility prompt files
-│   ├── configure-system.prompt.md
-│   └── execute-plan.prompt.md
+│   └── ...
+├── orchestration/             # Runtime scripts, tests, and schemas
+│   ├── scripts/
+│   │   ├── next-action.js     # Next-Action Resolver CLI
+│   │   ├── triage.js          # Triage Executor CLI
+│   │   ├── validate-state.js  # State Validator CLI
+│   │   ├── lib/
+│   │   │   ├── constants.js
+│   │   │   ├── resolver.js
+│   │   │   ├── state-validator.js
+│   │   │   └── triage-engine.js
+│   │   └── tests/             # All test files (18 total)
+│   │       └── ...
+│   └── schemas/
+│       └── state-json-schema.md
 ├── orchestration.yml          # System configuration
-├── copilot-instructions.md    # Workspace-level instructions (always loaded)
-└── projects/                  # Project artifacts (path configurable)
+├── copilot-instructions.md    # Workspace-level instructions
+└── projects/                  # Project artifacts
     └── {PROJECT-NAME}/
         └── ...
-src/
-├── lib/
-│   ├── constants.js           # Shared enums (pipeline tiers, statuses, actions)
-│   ├── resolver.js            # Next-Action Resolver (pure function)
-│   └── state-validator.js     # State Transition Validator (15 invariants)
-├── validate-state.js          # State Validator CLI entry point
-├── next-action.js             # Next-Action Resolver CLI entry point
-└── triage.js                  # Triage Executor CLI entry point
-tests/
-└── ...                        # Test files for all scripts and utilities
+archive/                       # Historical design artifacts
+├── ORCHESTRATION-MASTER-PLAN.md
+├── orchestration-human-draft.md
+└── schemas/                   # Relic templates (14 files)
+    └── ...
+assets/                        # Static assets
+└── dashboard-screenshot.png
+docs/                          # Documentation (9 pages)
+├── getting-started.md
+├── agents.md
+├── pipeline.md
+├── skills.md
+├── configuration.md
+├── project-structure.md
+├── scripts.md
+├── validation.md
+└── dashboard.md               # NEW
+ui/                            # Monitoring dashboard (Next.js)
+└── ...
 ```
 
 ## Project Folder Structure
