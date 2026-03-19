@@ -128,16 +128,6 @@ node .github/skills/validate-orchestration/scripts/validate-orchestration.js --n
 - Exit code `1` means one or more failures (warnings are allowed)
 - `--no-color` strips ANSI escape codes for clean logs
 
-## State Validation
-
-For runtime state validation (checking `state.json` transitions), use the separate [State Transition Validator](scripts.md):
-
-```bash
-node .github/orchestration/scripts/validate-state.js --current path/to/current.json --proposed path/to/proposed.json
-```
-
-This checks all 15 invariants (V1–V15) and is called by the Tactical Planner before every state write. See [Deterministic Scripts](scripts.md) for details.
-
 ## When to Run
 
 Run validation after:
@@ -147,3 +137,9 @@ Run validation after:
 - Modifying instruction files
 - Adding prompt files
 - Any structural changes to `.github/`
+
+## Next Steps
+
+- [Configuration](configuration.md) — Understand the settings the validator checks
+- [Scripts](scripts.md) — Explore the pipeline CLI and action vocabulary
+- [Project Structure](project-structure.md) — See the workspace layout the validator expects

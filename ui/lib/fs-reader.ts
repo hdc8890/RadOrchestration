@@ -1,10 +1,9 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { RawStateJson } from '@/types/state';
+import type { ProjectState } from '@/types/state';
 import type { OrchestrationConfig } from '@/types/config';
 import type { ProjectSummary } from '@/types/components';
-import type { PipelineTier } from '@/types/state';
 
 import { resolveBasePath, resolveProjectDir } from '@/lib/path-resolver';
 import { parseYaml } from '@/lib/yaml-parser';
@@ -30,7 +29,7 @@ export async function readConfig(workspaceRoot: string): Promise<OrchestrationCo
  * If state.json is malformed, mark hasMalformedState: true with errorMessage.
  *
  * @param workspaceRoot - Absolute path to workspace root
- * @param basePath - Relative base path (e.g., ".github/projects")
+ * @param basePath - Base path from orchestration.yml (relative or absolute)
  * @returns Array of ProjectSummary objects
  */
 export async function discoverProjects(
@@ -50,13 +49,12 @@ export async function discoverProjects(
 
     try {
       const raw = await readFile(statePath, 'utf-8');
-      const state: RawStateJson = JSON.parse(raw);
+      const state: ProjectState = JSON.parse(raw);
       projects.push({
         name: projectName,
-        tier: state.pipeline.current_tier as PipelineTier,
+        tier: state.pipeline.current_tier,
         hasState: true,
         hasMalformedState: false,
-        brainstormingDoc: state.project.brainstorming_doc ?? null,
       });
     } catch (err) {
       // Determine if the file is missing or malformed
@@ -92,16 +90,16 @@ export async function discoverProjects(
  * Read and parse a project's state.json. Returns null if file does not exist.
  *
  * @param projectDir - Absolute path to the project directory
- * @returns Parsed RawStateJson, or null if state.json does not exist
+ * @returns Parsed ProjectState, or null if state.json does not exist
  * @throws If state.json exists but is malformed JSON
  */
 export async function readProjectState(
   projectDir: string
-): Promise<RawStateJson | null> {
+): Promise<ProjectState | null> {
   const statePath = path.join(projectDir, 'state.json');
   try {
     const content = await readFile(statePath, 'utf-8');
-    return JSON.parse(content) as RawStateJson;
+    return JSON.parse(content) as ProjectState;
   } catch (err) {
     const isNotFound =
       err instanceof Error &&
@@ -136,4 +134,32 @@ export async function fileExists(absolutePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Recursively list all .md files in a project directory.
+ * Returns paths relative to the project directory using forward slashes.
+ * Does not follow symlinks. Skips entries containing "..".
+ *
+ * @param projectDir - Absolute path to the project directory
+ * @returns Array of relative file paths (e.g., ["PRD.md", "tasks/TASK-P01-T01.md"])
+ */
+export async function listProjectFiles(projectDir: string): Promise<string[]> {
+  const files: string[] = [];
+
+  async function walk(dir: string): Promise<void> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.includes('..')) continue;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+      } else if (entry.name.endsWith('.md')) {
+        files.push(path.relative(projectDir, fullPath).replace(/\\/g, '/'));
+      }
+    }
+  }
+
+  await walk(projectDir);
+  return files;
 }

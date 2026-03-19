@@ -2,21 +2,16 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { PlanningChecklist } from "@/components/planning";
-import type { PlanningStepName, PlanningStepStatus, PlanningStatus } from "@/types/state";
+import { ApproveGateButton } from "@/components/dashboard/approve-gate-button";
+import type { PlanningState } from "@/types/state";
 
 interface PlanningSectionProps {
-  planning: {
-    status: PlanningStatus;
-    steps: Record<PlanningStepName, {
-      status: PlanningStepStatus;
-      output: string | null;
-    }>;
-    human_approved: boolean;
-  };
+  planning: PlanningState;
+  projectName: string;
   onDocClick: (path: string) => void;
 }
 
-export function PlanningSection({ planning, onDocClick }: PlanningSectionProps) {
+export function PlanningSection({ planning, projectName, onDocClick }: PlanningSectionProps) {
   return (
     <Card>
       <CardHeader>
@@ -28,6 +23,15 @@ export function PlanningSection({ planning, onDocClick }: PlanningSectionProps) 
           humanApproved={planning.human_approved}
           onDocClick={onDocClick}
         />
+        {planning.status === "complete" && !planning.human_approved && (
+          <ApproveGateButton
+            gateEvent="plan_approved"
+            projectName={projectName}
+            documentName={`${projectName}-MASTER-PLAN.md`}
+            label="Approve Plan"
+            className="mt-4 flex justify-end"
+          />
+        )}
       </CardContent>
     </Card>
   );

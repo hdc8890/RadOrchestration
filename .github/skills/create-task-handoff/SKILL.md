@@ -21,21 +21,48 @@ Generate a self-contained Task Handoff document that is the sole input a Coding 
 | Architecture | `{NAME}-ARCHITECTURE.md` | Contracts, interfaces, file structure |
 | Design | `{NAME}-DESIGN.md` | Design tokens, component specs (if UI task) |
 | Previous Task Report | `{NAME}-TASK-REPORT-P{NN}-T{NN}.md` | Output from prior task (if dependency exists) |
+| State | `state.json` | Current project state, review actions, mutation handler outcomes |
 
 ## Workflow
 
 1. **Read inputs**: Load Phase Plan, Architecture, Design (if relevant), and any prior task reports
-2. **Write objective**: 1-3 sentences as a completion statement ("Create...", "Implement...", "Configure...")
-3. **Write context**: Minimal immediate technical context (max 5 sentences) — NOT project history
-4. **Define file targets**: Exact file paths with CREATE/MODIFY action types
-5. **Write implementation steps**: Specific, actionable, ordered steps (max 10)
-6. **Inline contracts**: Copy the exact interfaces/contracts from Architecture — do NOT reference the Architecture doc
-7. **Inline design tokens**: Copy the actual token values from Design — do NOT say "see design doc"
-8. **Define test requirements**: Specific, verifiable test cases
-9. **Define acceptance criteria**: Binary pass/fail checklist
-10. **Add constraints**: Explicit boundaries (what NOT to do)
-11. **Write the Task Handoff**: Use the bundled template at [templates/TASK-HANDOFF.md](./templates/TASK-HANDOFF.md)
-12. **Save**: Write to `{PROJECT-DIR}/tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md`
+2. **Discover available skills**: Discover agent skills in the skills directory to recommend relevant ones for the task handoff
+3. **Write objective**: 1-3 sentences as a completion statement ("Create...", "Implement...", "Configure...")
+4. **Write context**: Minimal immediate technical context (max 5 sentences) — NOT project history
+5. **Define file targets**: Exact file paths with CREATE/MODIFY action types
+6. **Write implementation steps**: Specific, actionable, ordered steps (max 10)
+7. **Inline contracts**: Copy the exact interfaces/contracts from Architecture — do NOT reference the Architecture doc
+8. **Inline design tokens**: Copy the actual token values from Design — do NOT say "see design doc"
+9. **Define test requirements**: Specific, verifiable test cases
+10. **Define acceptance criteria**: Binary pass/fail checklist
+11. **Add constraints**: Explicit boundaries (what NOT to do)
+12. **Write the Task Handoff**: Use the bundled template at [templates/TASK-HANDOFF.md](./templates/TASK-HANDOFF.md)
+13. **Save**: Write to `{PROJECT-DIR}/tasks/{NAME}-TASK-P{NN}-T{NN}-{TITLE}.md`
+
+## Prior Context (Corrective Handling)
+
+Before creating the task handoff, check for corrective routing:
+
+1. **Read** `state.json → execution.phases[current_phase - 1].tasks[task_index].review.action`
+2. **Route** based on the value:
+
+| `review.action` value | What to produce |
+|-----------------------|------------------|
+| `null` (no review doc) | Normal Task Handoff; include Task Report Recommendations in context |
+| `"advanced"` / `"advance"` | Normal Task Handoff; include carry-forward items in context |
+| `"corrective_task_issued"` | Corrective Task Handoff; inline all Issues from Code Review; include original acceptance criteria |
+| `"halted"` | DO NOT produce a Task Handoff — inform the Orchestrator the pipeline is halted |
+
+### Corrective Task Handoff
+
+When `review.action == "corrective_task_issued"`:
+
+1. Read the code review document at the task's `docs.review` path in `state.json`
+2. Extract the **Issues** table from the review
+3. These issues become the primary objective of the corrective handoff
+4. Include the original task's acceptance criteria (they still apply)
+5. Focus implementation steps ONLY on fixing the identified issues — do not re-implement the full task
+6. Save with the same task ID (overwrite or append `-fix` suffix as appropriate)
 
 ## Key Rules
 
@@ -56,6 +83,12 @@ Before producing a task handoff, verify:
 - [ ] Are there zero references to external planning documents?
 - [ ] Are design tokens actual values, not "see design system"?
 - [ ] Is the task scope achievable in a single agent session?
+
+## Skill Discovery and Assignment
+- Enumerate `.github/skills/` folder names. For each skill, read the `description` field from its `SKILL.md` frontmatter. 
+- Evaluate each skill against this task's objective and implementation steps using the lens: "would a coder working on this task benefit from invoking this skill?" 
+- Select only skills with a direct functional match. Populate the `skills` frontmatter field with the selected skill folder names. 
+- Technology or framework names (e.g., "TypeScript", "React") are NOT valid values — only `.github/skills/` folder names.
 
 ## Template
 

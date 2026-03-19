@@ -57,6 +57,20 @@ human_gates:
 | `base_path` | string | `".github/projects"` | Directory where project folders are created. Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/` |
 | `naming` | string | `"SCREAMING_CASE"` | Naming convention for project folders and files. Options: `SCREAMING_CASE`, `lowercase`, `numbered` |
 
+#### Path Resolution
+
+The `base_path` setting accepts both relative and absolute paths:
+
+- **Relative paths** (e.g., `".github/projects"`) are resolved from the workspace root. This is the default and works for standard single-workspace setups.
+- **Absolute paths** (e.g., `"/shared/projects"`) are used as-is. This is useful for **git worktree setups** where multiple worktrees need to share a single project folder outside any individual worktree.
+
+When you change `base_path`, the `applyTo` glob in `.github/instructions/project-docs.instructions.md` must also be updated to match — otherwise, Copilot's scoped instructions will silently stop applying to project files. You can either:
+
+1. Update `applyTo` manually to `{new_base_path}/**`
+2. Run `/configure-system`, which updates it automatically
+
+The [validation tool](validation.md) warns if `applyTo` and `base_path` fall out of sync.
+
 ### `limits`
 
 Pipeline scope guards that prevent runaway execution.
@@ -68,9 +82,11 @@ Pipeline scope guards that prevent runaway execution.
 | `max_retries_per_task` | number | `2` | Auto-retries per task before escalation to human |
 | `max_consecutive_review_rejections` | number | `3` | Consecutive reviewer rejections before human escalation |
 
-These limits are copied into `state.json` at project initialization. The [State Transition Validator](scripts.md) enforces them on every state write.
+These limits are read from `orchestration.yml` at runtime by the pipeline engine — they are not copied into `state.json` at project initialization. The [State Transition Validator](scripts.md) enforces them on every state write by reading from the configuration file directly.
 
 ### `errors`
+
+> **Planned — not yet functional.** This section documents a planned feature. The pipeline does not currently use these settings. They are validated for syntax but have no runtime effect.
 
 Error classification determines the pipeline's automatic response.
 
@@ -82,6 +98,8 @@ Error classification determines the pipeline's automatic response.
 | `on_minor` | string | `"retry"` | Response to minor errors. Options: `retry`, `halt`, `skip` |
 
 ### `git`
+
+> **Planned — not yet functional.** This section documents a planned feature. The pipeline does not currently use these settings. They are validated for syntax but have no runtime effect.
 
 Git strategy for orchestration branches and commits.
 
@@ -106,22 +124,22 @@ Human approval checkpoints during pipeline execution.
 
 | Mode | Behavior |
 |------|----------|
-| `ask` | Prompt the human at execution start for their preferred oversight level |
+| `ask` | Prompt the human for their preferred gate level. When the pipeline encounters a gate and no mode has been resolved, it returns the [`ask_gate_mode`](scripts.md#gate-actions-3) action, and the Orchestrator asks the human which mode to use for the remainder of execution. |
 | `phase` | Require human approval before each phase begins |
 | `task` | Require human approval before each task begins |
 | `autonomous` | No gates during execution — all phases and tasks run without human approval |
 
 ## Configuration at Runtime
 
-When a project is initialized, key configuration values (limits, human gate mode) are copied into `state.json`. The deterministic scripts read these values from `state.json` at runtime, keeping the interface clean — one input file per script invocation.
+The pipeline engine reads limits and human gate settings directly from `orchestration.yml` at runtime. These values are not copied into `state.json` at project initialization — `state.json` holds only pipeline state, not configuration. This means changes to `orchestration.yml` limits take effect for all projects on the next pipeline invocation.
 
-The one exception: the [Next-Action Resolver](scripts.md) optionally reads `orchestration.yml` directly for `human_gate_mode` when checking phase-level gates.
+See [state-v4.schema.json](../.github/orchestration/schemas/state-v4.schema.json) for the full initial state shape and schema definition.
 
 ## Changing Configuration
 
-Changes to `orchestration.yml` affect **new projects only**. In-progress projects use the limits and settings captured in their `state.json` at initialization.
+Changes to `orchestration.yml` affect all projects on the next pipeline invocation, since limits are read at runtime rather than copied into `state.json`.
 
-If you change `projects.base_path`, run `/configure-system` — it automatically scans the `.github/` directory for hardcoded path references and updates them.
+If you change `projects.base_path`, run `/configure-system` — it automatically scans the `.github/` directory for hardcoded path references and updates them. It also updates the `applyTo` glob in `.github/instructions/project-docs.instructions.md` to match the new path. If you skip this step, run the [validation tool](validation.md) — it warns if `applyTo` and `base_path` are out of sync.
 
 ## Validation
 
@@ -136,3 +154,8 @@ This checks:
 - All required keys are present with correct types
 - Values are within allowed ranges
 - Error severity categories are valid
+
+## Next Steps
+
+- [Validation](validation.md) — Run the validator to check your configuration
+- [Scripts](scripts.md) — Pipeline scripts reference: actions, events, and CLI interface

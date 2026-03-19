@@ -12,6 +12,14 @@ Skills can include:
 - **References** — background material and examples
 - **Scripts** — CLI tools the skill uses
 
+## Customizing Skills
+
+Skills can be modified to adjust agent behavior — for example, changing the number of steps in a procedure, adjusting quality thresholds, or tailoring instructions to match a team's specific workflow and conventions.
+
+> **Warning**: Core instructions within skills — such as output format requirements, frontmatter schemas, and self-containment rules — should be preserved. Other parts of the pipeline depend on these contracts, and changing them can cause downstream agents to produce incompatible output.
+
+To customize the **output format** of documents a skill produces, modify the skill's template files. See [Templates](templates.md) for details on the 16 output templates and their customization rules.
+
 ## Skill Inventory
 
 ### Planning Skills
@@ -31,17 +39,18 @@ Skills can include:
 |-------|-------------|---------|
 | `create-phase-plan` | Break project phases into concrete tasks with dependencies, execution order, and acceptance criteria | Tactical Planner |
 | `create-task-handoff` | Create self-contained task documents that inline all contracts, interfaces, and requirements | Tactical Planner |
+| `execute-coding-task` | Full coding task execution loop — read handoff, implement code, run tests, verify acceptance criteria, write Task Report | Coder |
 | `generate-task-report` | Document task completion — files changed, test results, deviations, discoveries | Coder, Tactical Planner |
 | `generate-phase-report` | Summarize phase outcomes — aggregated task results, exit criteria assessment, carry-forward items | Tactical Planner |
 | `run-tests` | Execute the project test suite and report structured results with pass/fail and error details | Coder, Tactical Planner |
+| `log-error` | Log pipeline errors to a structured, append-only per-project error log (`ERROR-LOG.md`) | Orchestrator |
 
 ### Review Skills
 
 | Skill | Description | Used By |
 |-------|-------------|---------|
-| `review-code` | Review code changes against PRD, architecture, and design — produce verdicts with severity | Reviewer |
+| `review-task` | Review task output against the task handoff, architecture, and design — produce verdicts with severity | Reviewer |
 | `review-phase` | Cross-task integration review for entire phases — module consistency, exit criteria, test coverage | Reviewer |
-| `triage-report` | Reference documentation for the triage decision tables. The authoritative executor is the [Triage Executor script](scripts.md) | Tactical Planner |
 
 ### Meta Skills
 
@@ -58,14 +67,18 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 | Agent | Skills |
 |-------|--------|
 | Brainstormer | `brainstorm` |
-| Orchestrator | *(none — coordination only)* |
+| Orchestrator | `log-error` |
 | Research | `research-codebase` |
 | Product Manager | `create-prd` |
 | UX Designer | `create-design` |
 | Architect | `create-architecture`, `create-master-plan` |
-| Tactical Planner | `create-phase-plan`, `create-task-handoff`, `generate-task-report`, `generate-phase-report`, `triage-report`, `run-tests` |
-| Coder | `generate-task-report`, `run-tests` |
-| Reviewer | `review-code`, `review-phase` |
+| Tactical Planner | `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
+| Coder | `execute-coding-task`, `generate-task-report`, `run-tests` |
+| Reviewer | `review-task`, `review-phase` |
+
+## Skill Recommendation in Task Handoffs
+
+When creating task handoffs, the Tactical Planner enumerates the agent skills directory and evaluates each skill's description against the task being prepared. Skills that would help the Coder complete the task are listed in the handoff's `skills` field.
 
 ## Creating New Skills
 
@@ -95,3 +108,8 @@ The `SKILL.md` file contains:
 - **Instructions** — step-by-step procedures
 - **Templates** — output document schemas
 - **Rules** — constraints and quality standards
+
+## Next Steps
+
+- [Templates](templates.md) — Customize the 16 output templates that skills produce
+- [Agents](agents.md) — See which agents use which skills

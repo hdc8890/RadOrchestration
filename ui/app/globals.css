@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@plugin "@tailwindcss/typography";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -109,6 +111,12 @@
     --connection-warning: hsl(32, 95%, 34%);
     --connection-error: hsl(0, 84%, 45%);
 
+    /* ── Gate Mode Colors (WCAG AA corrected for light mode) ── */
+    --gate-task: hsl(32, 95%, 34%);
+    --gate-phase: hsl(271, 91%, 46%);
+    --gate-autonomous: hsl(142, 71%, 33%);
+    --gate-global: hsl(215, 14%, 43%);
+
     /* ── Surface & Layout Tokens ── */
     --header-bg: var(--card);
     --header-border: var(--border);
@@ -189,6 +197,12 @@
     --connection-warning: hsl(38, 92%, 50%);
     --connection-error: hsl(0, 84%, 60%);
 
+    /* ── Gate Mode Colors (dark mode — slate adjusted for contrast) ── */
+    --gate-task: hsl(38, 92%, 50%);
+    --gate-phase: hsl(271, 91%, 65%);
+    --gate-autonomous: hsl(142, 71%, 45%);
+    --gate-global: hsl(215, 14%, 63%);
+
     /* ── Surface & Layout Tokens (dark mode overrides) ── */
     --color-error-bg: hsl(0, 63%, 15%);
     --color-error-border: hsl(0, 63%, 31%);
@@ -224,4 +238,14 @@
   .transition-transform {
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Shiki Dual-Theme Toggle ── */
+html.dark .shiki,
+html.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
 }

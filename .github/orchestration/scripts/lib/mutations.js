@@ -1,0 +1,636 @@
+'use strict';
+
+const {
+  PIPELINE_TIERS,
+  PLANNING_STATUSES,
+  PLANNING_STEP_STATUSES,
+  TASK_STATUSES,
+  PHASE_STATUSES,
+  TASK_STAGES,
+  PHASE_STAGES,
+  REVIEW_VERDICTS,
+  REVIEW_ACTIONS,
+  PHASE_REVIEW_ACTIONS,
+} = require('./constants');
+
+// ─── Internal Helpers ───────────────────────────────────────────────────────
+
+/**
+ * @param {Object} state
+ * @returns {Object} current phase object (1-based index)
+ */
+function currentPhase(state) {
+  return state.execution.phases[state.execution.current_phase - 1];
+}
+
+/**
+ * @param {Object} state
+ * @returns {Object} current task object (1-based index)
+ */
+function currentTask(state) {
+  const phase = currentPhase(state);
+  return phase.tasks[phase.current_task - 1];
+}
+
+/**
+ * @param {number} retries
+ * @param {number} maxRetries
+ * @returns {boolean}
+ */
+function checkRetryBudget(retries, maxRetries) {
+  return retries < maxRetries;
+}
+
+// ─── Decision Tables ────────────────────────────────────────────────────────
+
+/**
+ * 8-row task decision table. First-match-wins.
+ * @param {string} verdict
+ * @param {string} reportStatus
+ * @param {boolean} hasDeviations
+ * @param {string|null} deviationType
+ * @param {number} retries
+ * @param {number} maxRetries
+ * @returns {{ taskStatus: string, reviewAction: string }}
+ */
+function resolveTaskOutcome(verdict, reportStatus, hasDeviations, deviationType, retries, maxRetries) {
+  // Row 1-3: approved + complete → always complete/advanced regardless of deviations
+  if (verdict === REVIEW_VERDICTS.APPROVED && reportStatus === 'complete') {
+    return { taskStatus: TASK_STATUSES.COMPLETE, reviewAction: REVIEW_ACTIONS.ADVANCED };
+  }
+  // Row 4-5: changes_requested + complete
+  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED && reportStatus === 'complete') {
+    if (checkRetryBudget(retries, maxRetries)) {
+      return { taskStatus: TASK_STATUSES.FAILED, reviewAction: REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED };
+    }
+    return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
+  }
+  // Row 6-7: changes_requested + failed
+  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED && reportStatus === 'failed') {
+    if (checkRetryBudget(retries, maxRetries)) {
+      return { taskStatus: TASK_STATUSES.FAILED, reviewAction: REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED };
+    }
+    return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
+  }
+  // Row 8: rejected
+  if (verdict === REVIEW_VERDICTS.REJECTED) {
+    return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
+  }
+  // Fallback (should not be reached with valid inputs)
+  return { taskStatus: TASK_STATUSES.HALTED, reviewAction: REVIEW_ACTIONS.HALTED };
+}
+
+/**
+ * 5-row phase decision table. First-match-wins.
+ * @param {string} verdict
+ * @param {boolean} exitCriteriaMet
+ * @returns {{ phaseStatus: string, phaseReviewAction: string }}
+ */
+function resolvePhaseOutcome(verdict, exitCriteriaMet) {
+  // Row 1-2: approved → always complete/advanced regardless of exit criteria
+  if (verdict === REVIEW_VERDICTS.APPROVED) {
+    return { phaseStatus: PHASE_STATUSES.COMPLETE, phaseReviewAction: PHASE_REVIEW_ACTIONS.ADVANCED };
+  }
+  // Row 3: changes_requested
+  if (verdict === REVIEW_VERDICTS.CHANGES_REQUESTED) {
+    return { phaseStatus: PHASE_STATUSES.IN_PROGRESS, phaseReviewAction: PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED };
+  }
+  // Row 4-5: rejected → always halted regardless of exit criteria
+  if (verdict === REVIEW_VERDICTS.REJECTED) {
+    return { phaseStatus: PHASE_STATUSES.HALTED, phaseReviewAction: PHASE_REVIEW_ACTIONS.HALTED };
+  }
+  // Fallback
+  return { phaseStatus: PHASE_STATUSES.HALTED, phaseReviewAction: PHASE_REVIEW_ACTIONS.HALTED };
+}
+
+// ─── Path Utility ───────────────────────────────────────────────────────────
+
+/**
+ * Normalize a document path to project-relative form.
+ * Converts backslashes to forward slashes before prefix comparison.
+ * Returns input unchanged if null/undefined or no prefix match (fail-safe).
+ *
+ * @param {string|null|undefined} docPath - Raw document path (may be workspace-relative or project-relative)
+ * @param {string} basePath - The base_path value from config (e.g., ".github/projects")
+ * @param {string} projectName - The project name (e.g., "MYAPP")
+ * @returns {string|null|undefined} Project-relative path (e.g., "tasks/TASK-P01-T01.md")
+ */
+function normalizeDocPath(docPath, basePath, projectName) {
+  if (!docPath) return docPath;
+  const normalized = docPath.replace(/\\/g, '/');
+  const prefix = basePath + '/' + projectName + '/';
+  if (normalized.startsWith(prefix)) return normalized.slice(prefix.length);
+  return normalized;
+}
+
+// ─── Planning Handlers ──────────────────────────────────────────────────────
+
+/**
+ * Shared helper for the 5 planning step-completion handlers.
+ * @param {Object} state
+ * @param {string} stepName
+ * @param {string} docPath
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function completePlanningStep(state, stepName, docPath) {
+  const step = state.planning.steps.find(s => s.name === stepName);
+  step.status = PLANNING_STEP_STATUSES.COMPLETE;
+  step.doc_path = docPath;
+  return {
+    state,
+    mutations_applied: [
+      `Set planning step "${stepName}" status to complete`,
+      `Set planning step "${stepName}" doc_path to "${docPath}"`,
+    ],
+  };
+}
+
+/** @type {MutationHandler} */
+function handleResearchCompleted(state, context, config) {
+  return completePlanningStep(state, 'research', context.doc_path);
+}
+
+/** @type {MutationHandler} */
+function handlePrdCompleted(state, context, config) {
+  return completePlanningStep(state, 'prd', context.doc_path);
+}
+
+/** @type {MutationHandler} */
+function handleDesignCompleted(state, context, config) {
+  return completePlanningStep(state, 'design', context.doc_path);
+}
+
+/** @type {MutationHandler} */
+function handleArchitectureCompleted(state, context, config) {
+  return completePlanningStep(state, 'architecture', context.doc_path);
+}
+
+/** @type {MutationHandler} */
+function handleMasterPlanCompleted(state, context, config) {
+  const result = completePlanningStep(state, 'master_plan', context.doc_path);
+  state.planning.status = PLANNING_STATUSES.COMPLETE;
+  result.mutations_applied.push('Set planning.status to complete');
+  return result;
+}
+
+// ─── Plan Approved Handler ──────────────────────────────────────────────────
+
+/** @type {MutationHandler} */
+function handlePlanApproved(state, context, config) {
+  state.planning.human_approved = true;
+  state.pipeline.current_tier = PIPELINE_TIERS.EXECUTION;
+  state.execution.status = 'in_progress';
+  state.execution.current_phase = 1; // 1-based; first phase active
+  state.execution.phases = [];
+  for (let i = 0; i < context.total_phases; i++) {
+    state.execution.phases.push({
+      name: `Phase ${i + 1}`,
+      status: PHASE_STATUSES.NOT_STARTED,
+      stage: PHASE_STAGES.PLANNING,
+      current_task: 0, // 1-based; 0 = no tasks yet
+      tasks: [],
+      docs: {
+        phase_plan: null,
+        phase_report: null,
+        phase_review: null,
+      },
+      review: {
+        verdict: null,
+        action: null,
+      },
+    });
+  }
+  return {
+    state,
+    mutations_applied: [
+      'Set planning.human_approved to true',
+      `Set pipeline.current_tier to "${PIPELINE_TIERS.EXECUTION}"`,
+      'Set execution.status to "in_progress"',
+      'Set execution.current_phase to 1',
+      `Initialized execution.phases with ${context.total_phases} phase(s)`,
+    ],
+  };
+}
+
+// ─── Plan Rejection Handler ─────────────────────────────────────────────────
+
+/**
+ * plan_rejected — Resets planning to allow revision of the master plan.
+ * @param {Object} state
+ * @param {Object} context  (no fields required)
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handlePlanRejected(state, context, config) {
+  state.planning.human_approved = false;
+  const masterPlanStep = state.planning.steps.find(s => s.name === 'master_plan');
+  masterPlanStep.status = PLANNING_STEP_STATUSES.IN_PROGRESS;
+  return {
+    state,
+    mutations_applied: [
+      'Set planning.human_approved to false',
+      `Set planning step "master_plan" status to "${PLANNING_STEP_STATUSES.IN_PROGRESS}"`,
+    ],
+  };
+}
+
+// ─── Execution Handlers ─────────────────────────────────────────────────────
+
+/** @type {MutationHandler} */
+function handlePhasePlanCreated(state, context, config) {
+  const phase = currentPhase(state);
+  phase.status = PHASE_STATUSES.IN_PROGRESS;
+  phase.stage = PHASE_STAGES.EXECUTING;
+  phase.docs.phase_plan = context.doc_path;
+  if (context.title) phase.name = context.title;
+  phase.current_task = 1; // 1-based; first task active
+  phase.tasks = context.tasks.map(taskObj => ({
+    name: typeof taskObj === 'object' && taskObj !== null ? (taskObj.title ?? taskObj.id ?? String(taskObj)) : taskObj,
+    status: TASK_STATUSES.NOT_STARTED,
+    stage: TASK_STAGES.PLANNING,
+    docs: {
+      handoff: null,
+      report: null,
+      review: null,
+    },
+    review: {
+      verdict: null,
+      action: null,
+    },
+    report_status: null,
+    has_deviations: false,
+    deviation_type: null,
+    retries: 0,
+  }));
+  return {
+    state,
+    mutations_applied: [
+      `Set phase.status to "${PHASE_STATUSES.IN_PROGRESS}"`,
+      `Set phase.stage to "${PHASE_STAGES.EXECUTING}"`,
+      `Set phase.docs.phase_plan to "${context.doc_path}"`,
+      ...(context.title ? [`Updated phase.name to "${context.title}"`] : []),
+      'Set phase.current_task to 1',
+      `Populated phase.tasks with ${context.tasks.length} task(s)`,
+    ],
+  };
+}
+
+/** @type {MutationHandler} */
+function handleTaskHandoffCreated(state, context, config) {
+  const task = currentTask(state);
+  const mutations = [];
+
+  // Clear stale report/review from previous attempt (corrective re-execution)
+  if (task.docs.report) {
+    task.docs.report = null;
+    task.report_status = null;
+    mutations.push('Cleared task.docs.report and report_status (corrective re-execution)');
+  }
+  if (task.docs.review) {
+    task.docs.review = null;
+    task.review.verdict = null;
+    task.review.action = null;
+    mutations.push('Cleared task.docs.review, review.verdict, and review.action (corrective re-execution)');
+  }
+
+  task.docs.handoff = context.doc_path;
+  task.status = TASK_STATUSES.IN_PROGRESS;
+  task.stage = TASK_STAGES.CODING;
+  mutations.push(`Set task.docs.handoff to "${context.doc_path}"`);
+  mutations.push(`Set task.status to "${TASK_STATUSES.IN_PROGRESS}"`);
+  mutations.push(`Set task.stage to "${TASK_STAGES.CODING}"`);
+
+  return { state, mutations_applied: mutations };
+}
+
+/** @type {MutationHandler} */
+function handleTaskCompleted(state, context, config) {
+  const task = currentTask(state);
+  task.docs.report = context.doc_path;
+  task.has_deviations = context.has_deviations;
+  task.deviation_type = context.deviation_type;
+  task.report_status = context.report_status || 'complete';
+  task.stage = TASK_STAGES.REVIEWING;
+  // KEY v4 CHANGE: task.status stays in_progress — complete is truly terminal (set only after code review approves)
+  return {
+    state,
+    mutations_applied: [
+      `Set task.docs.report to "${context.doc_path}"`,
+      `Set task.has_deviations to ${context.has_deviations}`,
+      `Set task.deviation_type to ${context.deviation_type}`,
+      `Set task.report_status to "${task.report_status}"`,
+      `Set task.stage to "${TASK_STAGES.REVIEWING}"`,
+      `task.status stays "${TASK_STATUSES.IN_PROGRESS}" (awaiting code review)`,
+    ],
+  };
+}
+
+/** @type {MutationHandler} */
+function handleCodeReviewCompleted(state, context, config) {
+  const task = currentTask(state);
+  const phase = currentPhase(state);
+  task.docs.review = context.doc_path;
+  task.review.verdict = context.verdict;
+
+  const { taskStatus, reviewAction } = resolveTaskOutcome(
+    context.verdict,
+    task.report_status || 'complete',
+    task.has_deviations,
+    task.deviation_type,
+    task.retries,
+    config.limits.max_retries_per_task,
+  );
+
+  task.status = taskStatus;
+  task.review.action = reviewAction;
+
+  const mutations = [
+    `Set task.docs.review to "${context.doc_path}"`,
+    `Set task.review.verdict to "${context.verdict}"`,
+    `Set task.status to "${taskStatus}"`,
+    `Set task.review.action to "${reviewAction}"`,
+  ];
+
+  if (reviewAction === REVIEW_ACTIONS.ADVANCED) {
+    task.stage = TASK_STAGES.COMPLETE;
+    mutations.push(`Set task.stage to "${TASK_STAGES.COMPLETE}"`);
+
+    const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+    if (effectiveGateMode === 'task') {
+      // Defer pointer advancement to handleGateApproved
+      mutations.push(`Deferred phase.current_task advancement (gate mode: task)`);
+    } else {
+      phase.current_task += 1;
+      mutations.push(`Bumped phase.current_task to ${phase.current_task}`);
+    }
+  } else if (reviewAction === REVIEW_ACTIONS.CORRECTIVE_TASK_ISSUED) {
+    task.stage = TASK_STAGES.FAILED;
+    task.status = TASK_STATUSES.FAILED;
+    task.retries += 1;
+    mutations.push(`Set task.stage to "${TASK_STAGES.FAILED}"`);
+    mutations.push(`Incremented task.retries to ${task.retries}`);
+  } else if (reviewAction === REVIEW_ACTIONS.HALTED) {
+    task.stage = TASK_STAGES.FAILED;
+    task.status = TASK_STATUSES.HALTED;
+    mutations.push(`Set task.stage to "${TASK_STAGES.FAILED}"`);
+    mutations.push('Set task.status to halted (explicit)');
+  }
+
+  return { state, mutations_applied: mutations };
+}
+
+/** @type {MutationHandler} */
+function handlePhaseReportCreated(state, context, config) {
+  const phase = currentPhase(state);
+  phase.docs.phase_report = context.doc_path;
+  phase.stage = PHASE_STAGES.REVIEWING;
+  return {
+    state,
+    mutations_applied: [
+      `Set phase.docs.phase_report to "${context.doc_path}"`,
+      `Set phase.stage to "${PHASE_STAGES.REVIEWING}"`,
+    ],
+  };
+}
+
+/** @type {MutationHandler} */
+function handlePhaseReviewCompleted(state, context, config) {
+  const phase = currentPhase(state);
+  phase.docs.phase_review = context.doc_path;
+  phase.review.verdict = context.verdict;
+
+  const { phaseStatus, phaseReviewAction } = resolvePhaseOutcome(
+    context.verdict,
+    context.exit_criteria_met,
+  );
+
+  phase.status = phaseStatus;
+  phase.review.action = phaseReviewAction;
+
+  const mutations = [
+    `Set phase.docs.phase_review to "${context.doc_path}"`,
+    `Set phase.review.verdict to "${context.verdict}"`,
+    `Set phase.status to "${phaseStatus}"`,
+    `Set phase.review.action to "${phaseReviewAction}"`,
+  ];
+
+  if (phaseReviewAction === PHASE_REVIEW_ACTIONS.ADVANCED) {
+    phase.stage = PHASE_STAGES.COMPLETE;
+    mutations.push(`Set phase.stage to "${PHASE_STAGES.COMPLETE}"`);
+
+    const effectiveGateMode = state.pipeline.gate_mode ?? config.human_gates.execution_mode;
+    if (effectiveGateMode === 'phase' || effectiveGateMode === 'task') {
+      // Defer pointer advancement to handleGateApproved
+      mutations.push(`Deferred execution.current_phase advancement (gate mode: ${effectiveGateMode})`);
+    } else {
+      // autonomous mode — advance immediately
+      if (state.execution.current_phase < state.execution.phases.length) {
+        state.execution.current_phase += 1;
+        mutations.push(`Bumped execution.current_phase to ${state.execution.current_phase}`);
+      } else {
+        state.execution.status = 'complete';
+        state.pipeline.current_tier = PIPELINE_TIERS.REVIEW;
+        mutations.push('Set execution.status to "complete"');
+        mutations.push(`Set pipeline.current_tier to "${PIPELINE_TIERS.REVIEW}"`);
+      }
+    }
+  } else if (phaseReviewAction === PHASE_REVIEW_ACTIONS.CORRECTIVE_TASKS_ISSUED) {
+    phase.stage = PHASE_STAGES.EXECUTING;
+    mutations.push(`Set phase.stage to "${PHASE_STAGES.EXECUTING}" (corrective re-entry)`);
+  } else if (phaseReviewAction === PHASE_REVIEW_ACTIONS.HALTED) {
+    phase.stage = PHASE_STAGES.FAILED;
+    state.pipeline.current_tier = PIPELINE_TIERS.HALTED;
+    mutations.push(`Set phase.stage to "${PHASE_STAGES.FAILED}"`);
+    mutations.push(`Set pipeline.current_tier to "${PIPELINE_TIERS.HALTED}"`);
+  }
+
+  return { state, mutations_applied: mutations };
+}
+
+// ─── Gate Handlers ──────────────────────────────────────────────────────────
+
+/**
+ * gate_approved — Advances the deferred pointer after gate approval.
+ * @param {Object} state
+ * @param {{ gate_type: 'task' | 'phase' }} context
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleGateApproved(state, context, config) {
+  const mutations = [];
+
+  if (context.gate_type === 'task') {
+    const phase = state.execution.phases[state.execution.current_phase - 1];
+    phase.current_task += 1;
+    mutations.push(`Bumped phase.current_task to ${phase.current_task} (gate approved)`);
+  } else if (context.gate_type === 'phase') {
+    if (state.execution.current_phase < state.execution.phases.length) {
+      state.execution.current_phase += 1;
+      mutations.push(`Bumped execution.current_phase to ${state.execution.current_phase} (gate approved)`);
+    } else {
+      state.execution.status = 'complete';
+      state.pipeline.current_tier = PIPELINE_TIERS.REVIEW;
+      mutations.push('Set execution.status to "complete" (last phase gate approved)');
+      mutations.push(`Set pipeline.current_tier to "${PIPELINE_TIERS.REVIEW}"`);
+    }
+  }
+
+  return { state, mutations_applied: mutations };
+}
+
+/**
+ * gate_rejected — Halts the pipeline with rejection context.
+ * @param {Object} state
+ * @param {{ gate_type: 'task' | 'phase', reason: string }} context
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleGateRejected(state, context, config) {
+  state.pipeline.current_tier = PIPELINE_TIERS.HALTED;
+
+  const phase = state.execution.phases[state.execution.current_phase - 1];
+  const locationInfo = context.gate_type === 'task'
+    ? `phase ${state.execution.current_phase}, task ${phase.current_task}`
+    : `phase ${state.execution.current_phase}`;
+
+  return {
+    state,
+    mutations_applied: [
+      `Set pipeline.current_tier to "${PIPELINE_TIERS.HALTED}"`,
+      `Gate rejected: ${context.gate_type} gate at ${locationInfo}`,
+      `Rejection reason: ${context.reason}`,
+    ],
+  };
+}
+
+/**
+ * gate_mode_set — Persists the operator's gate mode choice (from ask-mode resolution).
+ * @param {Object} state
+ * @param {{ gate_mode: 'task' | 'phase' | 'autonomous' }} context
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleGateModeSet(state, context, config) {
+  state.pipeline.gate_mode = context.gate_mode;
+  return {
+    state,
+    mutations_applied: [`Set pipeline.gate_mode to "${context.gate_mode}"`],
+  };
+}
+
+// ─── Review Handlers ────────────────────────────────────────────────────────
+
+/** @type {MutationHandler} */
+function handleFinalReviewCompleted(state, context, config) {
+  state.final_review.doc_path = context.doc_path;
+  state.final_review.status = 'complete';
+  return {
+    state,
+    mutations_applied: [
+      `Set final_review.doc_path to "${context.doc_path}"`,
+      'Set final_review.status to "complete"',
+    ],
+  };
+}
+
+/** @type {MutationHandler} */
+function handleFinalApproved(state, context, config) {
+  state.final_review.human_approved = true;
+  state.pipeline.current_tier = PIPELINE_TIERS.COMPLETE;
+  return {
+    state,
+    mutations_applied: [
+      'Set final_review.human_approved to true',
+      `Set pipeline.current_tier to "${PIPELINE_TIERS.COMPLETE}"`,
+    ],
+  };
+}
+
+/**
+ * final_rejected — Resets final review to allow re-review.
+ * @param {Object} state
+ * @param {Object} context  (no fields required)
+ * @param {Object} config
+ * @returns {{ state: Object, mutations_applied: string[] }}
+ */
+function handleFinalRejected(state, context, config) {
+  state.final_review.doc_path = null;
+  state.final_review.status = 'not_started';
+  return {
+    state,
+    mutations_applied: [
+      'Set final_review.doc_path to null',
+      'Set final_review.status to "not_started"',
+    ],
+  };
+}
+
+// ─── Halt Handler ───────────────────────────────────────────────────────────
+
+/** @type {MutationHandler} */
+function handleHalt(state, context, config) {
+  state.pipeline.current_tier = PIPELINE_TIERS.HALTED;
+  return {
+    state,
+    mutations_applied: [`Set pipeline.current_tier to "${PIPELINE_TIERS.HALTED}"`],
+  };
+}
+
+// ─── MUTATIONS Map ──────────────────────────────────────────────────────────
+
+const MUTATIONS = Object.freeze({
+  // Planning (6)
+  research_completed:       handleResearchCompleted,
+  prd_completed:            handlePrdCompleted,
+  design_completed:         handleDesignCompleted,
+  architecture_completed:   handleArchitectureCompleted,
+  master_plan_completed:    handleMasterPlanCompleted,
+  plan_approved:            handlePlanApproved,
+
+  // Planning rejection (1)
+  plan_rejected:            handlePlanRejected,
+
+  // Execution (6)
+  phase_plan_created:       handlePhasePlanCreated,
+  task_handoff_created:     handleTaskHandoffCreated,
+  task_completed:           handleTaskCompleted,
+  code_review_completed:    handleCodeReviewCompleted,
+  phase_report_created:     handlePhaseReportCreated,
+  phase_review_completed:   handlePhaseReviewCompleted,
+
+  // Gate events (3)
+  gate_mode_set:            handleGateModeSet,
+  gate_approved:            handleGateApproved,
+  gate_rejected:            handleGateRejected,
+
+  // Review (3)
+  final_review_completed:   handleFinalReviewCompleted,
+  final_approved:           handleFinalApproved,
+  final_rejected:           handleFinalRejected,
+
+  // Utility (1)
+  halt:                     handleHalt,
+});
+
+/**
+ * Look up the mutation handler for a given event.
+ * @param {string} event
+ * @returns {Function|undefined}
+ */
+function getMutation(event) {
+  return MUTATIONS[event];
+}
+
+// ─── Exports ────────────────────────────────────────────────────────────────
+
+module.exports = {
+  getMutation,
+  normalizeDocPath,
+};
+
+// Expose internals for testing only
+module.exports._test = {
+  resolveTaskOutcome,
+  resolvePhaseOutcome,
+  checkRetryBudget,
+};

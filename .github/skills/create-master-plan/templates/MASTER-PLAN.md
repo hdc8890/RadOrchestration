@@ -1,6 +1,7 @@
 ---
 project: "{PROJECT-NAME}"
 status: "draft|approved"
+total_phases: {Number}
 author: "architect-agent"
 created: "{ISO-DATE}"
 ---
@@ -16,6 +17,7 @@ created: "{ISO-DATE}"
 | Document | Path | Status |
 |----------|------|--------|
 | Brainstorming | [{NAME}-BRAINSTORMING.md]({path}) | ✅ |
+| Research | [{NAME}-RESEARCH-FINDINGS.md]({path}) | ✅ |
 | PRD | [{NAME}-PRD.md]({path}) | ✅ |
 | Design | [{NAME}-DESIGN.md]({path}) | ✅ |
 | Architecture | [{NAME}-ARCHITECTURE.md]({path}) | ✅ |

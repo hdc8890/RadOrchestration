@@ -5,69 +5,77 @@ This page documents the file layout, naming conventions, document types, and sta
 ## Workspace Layout
 
 ```
-.github/
+.github/ 
 ├── agents/                    # 9 agent definitions
 │   └── ...
-├── skills/                    # 17 skill bundles
+├── skills/                    # 18 skill bundles
 │   └── ...
 ├── instructions/              # Scoped instruction files
 │   └── ...
 ├── prompts/                   # Utility prompt files
 │   └── ...
-├── orchestration/             # Runtime scripts, tests, and schemas
-│   ├── scripts/
-│   │   ├── next-action.js     # Next-Action Resolver CLI
-│   │   ├── triage.js          # Triage Executor CLI
-│   │   ├── validate-state.js  # State Validator CLI
-│   │   ├── lib/
-│   │   │   ├── constants.js
-│   │   │   ├── resolver.js
-│   │   │   ├── state-validator.js
-│   │   │   └── triage-engine.js
-│   │   └── tests/             # All test files (18 total)
-│   │       └── ...
-│   └── schemas/
-│       └── state-json-schema.md
+├── orchestration/             # Runtime scripts and tests
+│   ├── schemas/               # JSON Schema definitions
+│   │   └── state-v4.schema.json  # Canonical v4 state JSON Schema
+│   └── scripts/
+│       ├── pipeline.js        # Unified pipeline CLI (sole state writer)
+│       ├── migrate-to-v4.js   # Migration CLI tool (v3 → v4 state upgrade)
+│       ├── lib/
+│       │   ├── constants.js
+│       │   ├── mutations.js
+│       │   ├── pipeline-engine.js
+│       │   ├── pre-reads.js
+│       │   ├── resolver.js
+│       │   ├── state-io.js
+│       │   └── validator.js
+│       └── tests/             # All test files (19 total)
+│           └── ...
 ├── orchestration.yml          # System configuration
 ├── copilot-instructions.md    # Workspace-level instructions
-└── projects/                  # Project artifacts
+└── projects/                  # Project artifacts (default -- configurable via `orchestration.yml`)
     └── {PROJECT-NAME}/
         └── ...
-archive/                       # Historical design artifacts
+archive/                       # Historical design artifacts -- the plan that started this repository
 ├── ORCHESTRATION-MASTER-PLAN.md
 ├── orchestration-human-draft.md
 └── schemas/                   # Relic templates (14 files)
     └── ...
 assets/                        # Static assets
 └── dashboard-screenshot.png
-docs/                          # Documentation (9 pages)
+docs/                          # Documentation (10 pages)
 ├── getting-started.md
 ├── agents.md
 ├── pipeline.md
 ├── skills.md
+├── templates.md
 ├── configuration.md
 ├── project-structure.md
 ├── scripts.md
 ├── validation.md
-└── dashboard.md               # NEW
+└── dashboard.md
 ui/                            # Monitoring dashboard (Next.js)
-└── ...
+└── components/
+    └── badges/
+        ├── pipeline-tier-badge.tsx
+        ├── review-verdict-badge.tsx
+        ├── status-icon.tsx
+        └── stage-badge.tsx    # Stage badge component
 ```
 
 ## Project Folder Structure
 
-Each project gets its own subfolder under the configured `base_path` (default: `.github/projects/`):
+Each project gets its own subfolder under the configured `base_path` (default: `.github/projects/` — configurable via `orchestration.yml`). The `base_path` supports both relative paths (resolved from workspace root) and absolute paths (used as-is, useful for git worktree setups):
 
 ```
 {PROJECT-NAME}/
-├── state.json                 # Pipeline state (sole writer: Tactical Planner)
-├── STATUS.md                  # Human-readable progress summary
+├── state.json                 # Pipeline state (sole writer: pipeline script)
 ├── BRAINSTORMING.md           # Optional ideation output
 ├── {NAME}-RESEARCH-FINDINGS.md
 ├── {NAME}-PRD.md
 ├── {NAME}-DESIGN.md
 ├── {NAME}-ARCHITECTURE.md
 ├── {NAME}-MASTER-PLAN.md
+├── {NAME}-ERROR-LOG.md
 ├── phases/
 │   ├── {NAME}-PHASE-01-{TITLE}.md
 │   └── {NAME}-PHASE-02-{TITLE}.md
@@ -87,7 +95,7 @@ Each project gets its own subfolder under the configured `base_path` (default: `
 
 ### Project Files
 
-Project files use `SCREAMING-CASE` with the project name as a prefix:
+Project files use `SCREAMING-CASE` (configurable) with the project name as a prefix:
 
 | Pattern | Example |
 |---------|---------|
@@ -98,6 +106,7 @@ Project files use `SCREAMING-CASE` with the project name as a prefix:
 | `{NAME}-TASK-REPORT-P{NN}-T{NN}.md` | `MYAPP-TASK-REPORT-P01-T03.md` |
 | `{NAME}-PHASE-REPORT-P{NN}.md` | `MYAPP-PHASE-REPORT-P01.md` |
 | `CODE-REVIEW-P{NN}-T{NN}.md` | `CODE-REVIEW-P01-T03.md` |
+| `{NAME}-ERROR-LOG.md` | `MYAPP-ERROR-LOG.md` |
 
 ### System Files
 
@@ -105,7 +114,7 @@ Project files use `SCREAMING-CASE` with the project name as a prefix:
 |-----------|-----------|---------|
 | Agents | lowercase with hyphens | `orchestrator.agent.md` |
 | Skills | lowercase with hyphens | `.github/skills/create-prd/` |
-| Instructions | lowercase with hyphens | `state-management.instructions.md` |
+| Instructions | lowercase with hyphens | `project-docs.instructions.md` |
 | Prompts | lowercase with hyphens | `configure-system.prompt.md` |
 
 ## Document Types
@@ -131,69 +140,27 @@ Project files use `SCREAMING-CASE` with the project name as a prefix:
 | `PHASE-REPORT.md` | Tactical Planner | Aggregated results, exit criteria assessment, carry-forward items |
 | `CODE-REVIEW.md` | Reviewer | Verdict, checklist, issues, severity classification |
 | `PHASE-REVIEW.md` | Reviewer | Cross-task integration assessment, exit criteria verification |
+| `ERROR-LOG.md` | Orchestrator (via `log-error` skill) | Append-only numbered error entries from pipeline failures |
 
 ### State Files
 
 | File | Sole Writer | Purpose |
 |------|-------------|---------|
-| `state.json` | Tactical Planner | Machine-readable pipeline state |
-| `STATUS.md` | Tactical Planner | Human-readable progress summary |
+| `state.json` | Pipeline Script (`pipeline.js`) | Machine-readable pipeline state |
 
 ## State Management
 
 ### `state.json` Schema
 
-The state file tracks the complete pipeline position:
-
-```jsonc
-{
-  "project": { "name": "...", "created": "...", "updated": "..." },
-  "pipeline": { "current_tier": "execution", "human_gate_mode": "ask" },
-  "planning": {
-    "status": "complete",
-    "steps": {
-      "research": { "status": "complete", "output": "..." },
-      "prd": { "status": "complete", "output": "..." },
-      "design": { "status": "complete", "output": "..." },
-      "architecture": { "status": "complete", "output": "..." },
-      "master_plan": { "status": "complete", "output": "..." }
-    },
-    "human_approved": true
-  },
-  "execution": {
-    "current_phase": 0,
-    "total_phases": 3,
-    "phases": [
-      {
-        "phase_number": 1,
-        "status": "in_progress",
-        "current_task": 0,
-        "tasks": [
-          { "status": "complete", "retries": 0 },
-          { "status": "in_progress", "retries": 0 }
-        ]
-      }
-    ]
-  },
-  "limits": { "max_phases": 10, "max_tasks_per_phase": 8, "max_retries_per_task": 2 },
-  "errors": { "total_retries": 0, "total_halts": 0, "active_blockers": [] }
-}
-```
+- The `state.json` file is the single source of truth for pipeline state.  
+- Each project folder contains its own `state.json` that tracks the current phase, task, agent, and other relevant metadata. 
+- The pipeline script (`pipeline.js`) is the sole writer of `state.json` — no agent directly modifies it. 
+- Agents read `state.json` for context but never write to it.
+- The schema identifier is `orchestration-state-v4`. The full JSON Schema is defined in [`.github/orchestration/schemas/state-v4.schema.json`](../../.github/orchestration/schemas/state-v4.schema.json).
 
 ### Invariants
 
-The [State Transition Validator](scripts.md) checks 15 invariants (V1–V15) before every write:
-
-- **Task transitions** — tasks progress linearly (`not_started` → `in_progress` → `complete` | `failed`)
-- **Single active task** — only one task `in_progress` across the entire project
-- **Planning gate** — `planning.human_approved` must be `true` before `current_tier` can be `execution`
-- **Limit enforcement** — phase count, task count, and retry count must stay within configured limits
-- **Timestamp monotonicity** — `project.updated` must never decrease
-- **Retry monotonicity** — retry counts never decrease
-- **Write ordering** — verdict/action fields follow required sequencing
-- **Immutability** — completed task fields cannot be modified
-
-See [Deterministic Scripts](scripts.md) for the full invariant catalog.
+The pipeline engine (`pipeline-engine.js`) runs all 12 invariant checks (V1–V2, V5–V7, V10–V16) on every state transition — see [Validation](validation.md) for the full invariant catalog. Only the pipeline script (`pipeline.js`) writes `state.json`; no agent touches it directly.
 
 ## Scoped Instructions
 
@@ -202,7 +169,8 @@ Instruction files use `applyTo` glob patterns to load context-specific rules onl
 | File | Applies To | Rules |
 |------|-----------|-------|
 | `project-docs.instructions.md` | `.github/projects/**` | Naming conventions, file ownership (sole writer policy), document quality standards |
-| `state-management.instructions.md` | `**/state.json`, `**/*STATUS.md` | State invariants, sole writer enforcement, pipeline tier ordering |
+
+> **Note:** The `applyTo` glob in `project-docs.instructions.md` must match the `base_path` configured in `orchestration.yml`. If you change `base_path`, update `applyTo` to `{new_base_path}/**` or run `/configure-system` to sync automatically.
 
 ## Prompt Files
 
@@ -212,3 +180,8 @@ Prompt files provide utility workflows accessible via `/` commands in Copilot:
 |--------|---------|---------|
 | `configure-system.prompt.md` | `/configure-system` | Create or update `orchestration.yml`, scan for stale path references |
 | `execute-plan.prompt.md` | `/execute-plan` | Approve a Master Plan and begin execution |
+
+## Next Steps
+
+- [Templates](templates.md) — customization rules and the full template inventory
+- [Validation](validation.md) — how to validate your project structure and state

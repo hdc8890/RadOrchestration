@@ -4,10 +4,9 @@ import path from 'node:path';
 import chokidar from 'chokidar';
 
 import type { SSEEvent, SSEEventType, SSEPayloadMap } from '@/types/events';
-import type { RawStateJson } from '@/types/state';
+import type { ProjectState } from '@/types/state';
 import { getWorkspaceRoot, resolveBasePath } from '@/lib/path-resolver';
 import { readConfig } from '@/lib/fs-reader';
-import { normalizeState } from '@/lib/normalizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,14 +104,13 @@ export async function GET(request: Request) {
         ignoreInitial: true,
       });
 
-      // change handler — read, parse, normalize, emit
+      // change handler — read, parse, emit v4 state directly
       watcher.on('change', (filePath: string) => {
         const projectName = extractProjectName(filePath, absoluteProjectsDir);
         debouncedEmit(projectName, () => {
           readFile(filePath, 'utf-8')
             .then((content) => {
-              const raw: RawStateJson = JSON.parse(content);
-              const state = normalizeState(raw);
+              const state: ProjectState = JSON.parse(content);
               enqueue(createSSEEvent('state_change', { projectName, state }));
             })
             .catch((err) => {
@@ -142,12 +140,38 @@ export async function GET(request: Request) {
         console.error('[SSE] Chokidar watcher error:', error);
       });
 
-      // ── 3. Heartbeat interval (30s) ────────────────────────────────
+      // ── 3. Set up shallow directory watcher ───────────────────────
+      const dirWatcher = chokidar.watch(absoluteProjectsDir, {
+        depth: 0,
+        ignoreInitial: true,
+      });
+
+      dirWatcher.on('addDir', (dirPath: string) => {
+        if (dirPath === absoluteProjectsDir) return;
+        const projectName = path.basename(dirPath);
+        debouncedEmit(projectName, () => {
+          enqueue(createSSEEvent('project_added', { projectName }));
+        });
+      });
+
+      dirWatcher.on('unlinkDir', (dirPath: string) => {
+        if (dirPath === absoluteProjectsDir) return;
+        const projectName = path.basename(dirPath);
+        debouncedEmit(projectName, () => {
+          enqueue(createSSEEvent('project_removed', { projectName }));
+        });
+      });
+
+      dirWatcher.on('error', (error: Error) => {
+        console.error('[SSE] Chokidar dir watcher error:', error);
+      });
+
+      // ── 4. Heartbeat interval (30s) ────────────────────────────────
       const heartbeatInterval = setInterval(() => {
         enqueue(createSSEEvent('heartbeat', {} as Record<string, never>));
       }, 30_000);
 
-      // ── 4. Cleanup on disconnect ───────────────────────────────────
+      // ── 5. Cleanup on disconnect ───────────────────────────────────
       function cleanup(): void {
         if (closed) return;
         closed = true;
@@ -156,6 +180,9 @@ export async function GET(request: Request) {
         clearAllDebounceTimers();
         watcher.close().catch((err) => {
           console.error('[SSE] Error closing watcher:', err);
+        });
+        dirWatcher.close().catch((err) => {
+          console.error('[SSE] Error closing dir watcher:', err);
         });
 
         try {

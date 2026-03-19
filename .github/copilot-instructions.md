@@ -11,7 +11,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 - **Brainstorm an idea**: Use `@Brainstormer` to collaboratively explore and refine a project idea before starting the pipeline. This is optional — you can skip straight to `@Orchestrator` if you already have a clear idea.
 - **Start a project**: Use `@Orchestrator` with a project idea. The Orchestrator reads state and spawns specialized agents to advance the pipeline. If a `BRAINSTORMING.md` exists, it uses that as input.
 - **Continue a project**: Use `@Orchestrator` and ask to continue. It reads `state.json` to determine the next step automatically.
-- **Check status**: Use `@Orchestrator` and ask for project status. It reads `STATUS.md` for a human-readable summary.
+- **Check status**: Use `@Orchestrator` and ask for project status. It reads `state.json` to determine the current status.
 
 ### Agents
 
@@ -23,7 +23,7 @@ This workspace contains a **document-driven agent orchestration system** built o
 | `@Product Manager` | Creates PRDs from research findings |
 | `@UX Designer` | Creates design documents from PRDs |
 | `@Architect` | Creates architecture docs and master plans |
-| `@Tactical Planner` | Breaks phases into tasks, manages state — **sole writer of state.json and STATUS.md** |
+| `@Tactical Planner` | Breaks phases into tasks, creates task handoffs, generates phase reports |
 | `@Coder` | Executes coding tasks from self-contained task handoffs |
 | `@Reviewer` | Reviews code and phases against planning documents |
 
@@ -39,7 +39,7 @@ Final:     Comprehensive Review → Human Approval → Complete
 
 1. **Start with `@Brainstormer` (optional) or `@Orchestrator`** — brainstorm ideas first, or go directly to the Orchestrator if you have a clear idea.
 2. **The Coder reads ONLY its Task Handoff** — everything it needs is self-contained in that one document.
-3. **Only the Tactical Planner writes `state.json` and `STATUS.md`** — no other agent touches these.
+3. **No agent directly writes `state.json`** — all state mutations performed by the `@Orchestrator` agent via the (`pipeline.js`) script.
 4. **Human gates** are enforced after planning (Master Plan review) and after final review.
 5. **Documents are the interface** — agents communicate through structured markdown files, never through shared state or memory.
 
@@ -54,13 +54,14 @@ System configuration lives in `.github/orchestration.yml`. It controls:
 
 ### Project Files
 
-Project artifacts are stored under the path configured in `orchestration.yml` → `projects.base_path` (default: `.github/projects/`). Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/`.
+Project artifacts are stored in a configurable location set by `orchestration.yml` → `projects.base_path` (supports both relative and absolute paths). Each project gets a subfolder: `{base_path}/{PROJECT-NAME}/`.
 
 Contents:
 - Brainstorming: `BRAINSTORMING.md` (optional, created by `@Brainstormer`)
 - Planning docs: `PRD.md`, `DESIGN.md`, `ARCHITECTURE.md`, `MASTER-PLAN.md`
 - Execution docs: `phases/`, `tasks/`, `reports/`
-- State: `state.json`, `STATUS.md`
+- State: `state.json`
+- Error log: `ERROR-LOG.md` (append-only, created by `@Orchestrator` via `log-error` skill)
 
 ### Naming Conventions
 

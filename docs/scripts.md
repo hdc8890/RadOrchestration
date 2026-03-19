@@ -1,156 +1,117 @@
-# Node.js Scripts
+# Pipeline Scripts
 
-The orchestration system uses three JavaScript CLI scripts to make pipeline routing, triage, and state validation fully deterministic. These scripts replace prose-based decision-making with pure functions — same input always produces the same output. Agents call the scripts via the terminal and parse structured JSON output.
+The orchestration system uses a single unified pipeline script (`pipeline.js`) for all deterministic pipeline operations: routing, mutation, and validation. Without these scripts, LLM agents must re-derive routing decisions from natural language on every invocation — producing inconsistent results for identical inputs. The script encodes these decisions as tested, deterministic code, so the same `state.json` always produces the same next action. LLMs still handle all judgment-requiring work (coding, reviewing, designing); scripts handle mechanical consistency.
 
-## Why Scripts?
-
-Without these scripts, LLM-based agents must re-derive routing and triage decisions from natural language on every invocation. This produces inconsistent results for identical inputs — the same `state.json` could lead to different next actions depending on how the agent interprets its instructions.
-
-The scripts encode these decisions as tested, deterministic code:
-- **Routing** — which agent to spawn next, given the current pipeline state
-- **Triage** — what to do after a review verdict (advance, retry, or halt)
-- **Validation** — whether a proposed state transition is legal
-
-LLMs still handle all judgment-requiring work: coding, reviewing, designing, architecting. The scripts handle the mechanical decisions.
-
-## Architecture
-
-```
-.github/orchestration/scripts/
-├── lib/
-│   ├── constants.js           # Shared enums — leaf module, zero dependencies
-│   ├── resolver.js            # Next-Action Resolver — pure function
-│   └── state-validator.js     # State Transition Validator — pure function
-├── next-action.js             # Resolver CLI entry point
-├── validate-state.js          # Validator CLI entry point
-└── triage.js                  # Triage Executor CLI entry point
-```
-
-**Four-layer architecture:**
-1. **CLI entry points** — handle I/O (read files, write stdout, exit codes)
-2. **Domain logic** — pure functions with no filesystem access
-3. **Shared constants** — frozen enums imported by everything
-4. **Infrastructure utilities** — reused from the validate-orchestration skill
-
-Domain modules never import filesystem utilities directly. The triage engine uses dependency injection for document reading, keeping it pure and testable.
-
-## Shared Constants
-
-`.github/orchestration/scripts/lib/constants.js` is the single source of truth for all enum values. Every other module imports from it. All enums are `Object.freeze()`-d to prevent runtime mutation.
-
-### Enum Reference
-
-| Enum | Values | Purpose |
-|------|--------|---------|
-| `PIPELINE_TIERS` | `planning`, `execution`, `review`, `complete`, `halted` | Pipeline tier progression |
-| `PLANNING_STATUSES` | `not_started`, `in_progress`, `complete` | Overall planning tier status |
-| `PLANNING_STEP_STATUSES` | `not_started`, `in_progress`, `complete`, `failed`, `skipped` | Individual planning step status |
-| `PHASE_STATUSES` | `not_started`, `in_progress`, `complete`, `failed`, `halted` | Phase lifecycle status |
-| `TASK_STATUSES` | `not_started`, `in_progress`, `complete`, `failed`, `halted` | Task lifecycle status |
-| `REVIEW_VERDICTS` | `approved`, `changes_requested`, `rejected` | Review outcome |
-| `REVIEW_ACTIONS` | `advanced`, `corrective_task_issued`, `halted` | Task-level triage action (singular) |
-| `PHASE_REVIEW_ACTIONS` | `advanced`, `corrective_tasks_issued`, `halted` | Phase-level triage action (plural) |
-| `SEVERITY_LEVELS` | `minor`, `critical` | Error severity classification |
-| `HUMAN_GATE_MODES` | `ask`, `phase`, `task`, `autonomous` | Execution gate behavior |
-| `TRIAGE_LEVELS` | `task`, `phase` | Triage scope |
-| `NEXT_ACTIONS` | 35 values — see below | Complete routing vocabulary |
-
-> **Note:** `REVIEW_ACTIONS` uses singular `corrective_task_issued` while `PHASE_REVIEW_ACTIONS` uses plural `corrective_tasks_issued`. This distinction is intentional.
+> `pipeline.js` is called by the Orchestrator agent during pipeline execution. It is not intended for manual use — users do not need to run it directly.
 
 ---
 
-## Next-Action Resolver
+## CLI Interface
 
-The resolver is a **pure function** that takes `state.json` as input and returns one of 35 possible next actions from a closed enum. It encodes the complete routing decision tree across all pipeline tiers.
-
-### CLI Usage
+### pipeline.js
 
 ```bash
-node .github/orchestration/scripts/next-action.js --state path/to/state.json
-# Optional: --config path/to/orchestration.yml (for human_gate_mode)
+node .github/orchestration/scripts/pipeline.js \
+  --event <event_name> \
+  --project-dir <path> \
+  [--config <path>] \
+  [--context '<json>']
 ```
 
-### Output
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--event` | Yes | One of the 17 pipeline events |
+| `--project-dir` | Yes | Absolute path to the project directory containing `state.json` |
+| `--config` | No | Path to `orchestration.yml`; built-in defaults used if omitted |
+| `--context` | No | JSON string with event-specific context (e.g., `doc_path`, `verdict`) |
 
-```json
-{
-  "action": "execute_task",
-  "context": {
-    "tier": "execution",
-    "phase_index": 0,
-    "task_index": 2,
-    "phase_id": "P01",
-    "task_id": "P01-T03",
-    "reason": "Task P01-T03 has handoff but status is not_started"
-  }
-}
+### migrate-to-v4.js
+
+```bash
+node .github/orchestration/scripts/migrate-to-v4.js <project-dir>
 ```
 
-### How the Orchestrator Uses It
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<project-dir>` | Yes | Absolute path to project directory containing `state.json` |
 
-1. Call `node .github/orchestration/scripts/next-action.js --state <path>`
-2. Parse the JSON output
-3. Pattern-match on `result.action` to determine which agent to spawn
-4. Track `triage_attempts` counter: increment on `triage_task`/`triage_phase`, reset on `advance_task`/`advance_phase`, halt if > 1
+Migrates a project’s `state.json` from an older schema version (v1–v3) to v4 format. Creates a backup of the original file (e.g., `state.3.json.bak`) before migrating and validates the result against the v4 JSON Schema.
 
-### Action Vocabulary
+---
 
-The resolver returns one of these 35 actions:
+## Event Vocabulary
 
-**Planning tier:**
+The pipeline accepts exactly 17 events. Each maps to a mutation handler in the `MUTATIONS` lookup table.
+
+| # | Event | Tier | Description |
+|---|-------|------|-------------|
+| 1 | `research_completed` | Planning | Research finished; sets `planning.steps[0].status` → complete, `planning.steps[0].doc_path` |
+| 2 | `prd_completed` | Planning | PRD created; sets `planning.steps[1].status` → complete |
+| 3 | `design_completed` | Planning | Design doc created; sets `planning.steps[2].status` → complete |
+| 4 | `architecture_completed` | Planning | Architecture created; sets `planning.steps[3].status` → complete |
+| 5 | `master_plan_completed` | Planning | Master plan created; sets `planning.steps[4].status` → complete, `planning.status` → complete |
+| 6 | `plan_approved` | Planning | Human approved; sets `planning.human_approved`, transitions `pipeline.current_tier` → execution |
+| 7 | `phase_plan_created` | Execution | Phase plan saved; sets `phase.docs.phase_plan`, `phase.status` → in_progress, `phase.stage` → executing |
+| 8 | `task_handoff_created` | Execution | Task handoff saved; sets `task.docs.handoff`, `task.status` → in_progress, `task.stage` → coding |
+| 9 | `task_completed` | Execution | Coder finished; sets `task.docs.report`, `task.stage` → reviewing (`status` stays in_progress) |
+| 10 | `code_review_completed` | Execution | Review finished; sets `task.docs.review`, `task.review.verdict`, `task.review.action`; resolves task outcome |
+| 11 | `phase_report_created` | Execution | Phase report saved; sets `phase.docs.phase_report`, `phase.stage` → reviewing |
+| 12 | `phase_review_completed` | Execution | Phase review finished; sets `phase.docs.phase_review`, `phase.review.verdict`, `phase.review.action`; resolves phase outcome |
+| 13 | `task_approved` | Execution | Human approved task gate |
+| 14 | `phase_approved` | Execution | Human approved phase gate |
+| 15 | `final_review_completed` | Review | Final review saved; sets `final_review.doc_path`, `final_review.status` → complete |
+| 16 | `final_approved` | Review | Human approved final review; sets `final_review.human_approved`, transitions `pipeline.current_tier` → complete |
+| 17 | `halt` | Any | Halt the pipeline with a reason |
+
+---
+
+## Action Vocabulary
+
+The resolver is a pure function that returns one of 19 values based solely on the current `state.json` and config. All actions are returned to the Orchestrator for agent routing — the script performs no agent spawning itself.
+
+### Planning Tier (6)
 
 | Action | Meaning |
 |--------|---------|
-| `init_project` | Project needs initialization |
 | `spawn_research` | Spawn Research agent |
 | `spawn_prd` | Spawn Product Manager |
 | `spawn_design` | Spawn UX Designer |
 | `spawn_architecture` | Spawn Architect for architecture |
 | `spawn_master_plan` | Spawn Architect for master plan |
 | `request_plan_approval` | Planning complete — request human approval |
-| `transition_to_execution` | Planning approved — transition to execution tier |
 
-**Execution tier — task lifecycle:**
+### Execution Tier — Task Lifecycle (4)
 
 | Action | Meaning |
 |--------|---------|
 | `create_phase_plan` | Phase needs a plan |
-| `create_task_handoff` | Task needs a handoff document |
+| `create_task_handoff` | Task needs a handoff document (fresh or corrective, distinguished by `context.is_correction`) |
 | `execute_task` | Task has handoff, ready to execute |
-| `update_state_from_task` | Task has report, update state |
-| `create_corrective_handoff` | Create corrective task from review feedback |
-| `halt_task_failed` | Task failed — halt for intervention |
 | `spawn_code_reviewer` | Task needs code review |
-| `update_state_from_review` | Review complete, update state |
-| `triage_task` | Task needs triage decision |
-| `halt_triage_invariant` | Triage loop detected — halt |
-| `retry_from_review` | Review requested changes — retry |
-| `halt_from_review` | Review rejected — halt |
-| `advance_task` | Task approved — advance to next |
-| `gate_task` | Task gate — request human approval |
 
-**Execution tier — phase lifecycle:**
+### Execution Tier — Phase Lifecycle (2)
 
 | Action | Meaning |
 |--------|---------|
 | `generate_phase_report` | All tasks complete — generate phase report |
 | `spawn_phase_reviewer` | Phase needs review |
-| `update_state_from_phase_review` | Phase review complete, update state |
-| `triage_phase` | Phase needs triage decision |
-| `halt_phase_triage_invariant` | Phase triage loop detected — halt |
-| `gate_phase` | Phase gate — request human approval |
-| `advance_phase` | Phase approved — advance to next |
-| `transition_to_review` | All phases complete — transition to review tier |
 
-**Review tier:**
+### Gate Actions (3)
+
+| Action | Meaning |
+|--------|---------|
+| `gate_task` | Task gate — request human approval |
+| `gate_phase` | Phase gate — request human approval |
+| `ask_gate_mode` | Gate mode is `"ask"` and execution mode has not been resolved for this gate — prompt the Orchestrator to ask the human which gate mode to use |
+
+### Review Tier (2)
 
 | Action | Meaning |
 |--------|---------|
 | `spawn_final_reviewer` | Spawn final comprehensive review |
 | `request_final_approval` | Final review complete — request human approval |
-| `transition_to_complete` | Final review approved — mark complete |
 
-**Terminal:**
+### Terminal (2)
 
 | Action | Meaning |
 |--------|---------|
@@ -159,180 +120,46 @@ The resolver returns one of these 35 actions:
 
 ---
 
-## Triage Executor
+## Result Shapes
 
-The triage engine evaluates review verdicts against deterministic decision tables to decide the next action: advance, issue corrective tasks, or halt. It uses **dependency injection** for document reading, keeping the core logic pure.
-
-### CLI Usage
-
-```bash
-# Task-level triage
-node .github/orchestration/scripts/triage.js --state path/to/state.json --level task --project-dir path/to/project/
-
-# Phase-level triage
-node .github/orchestration/scripts/triage.js --state path/to/state.json --level phase --project-dir path/to/project/
-```
-
-### Output
+### Success
 
 ```json
 {
-  "level": "task",
-  "verdict": "changes_requested",
-  "action": "corrective_task_issued",
-  "severity": "minor",
-  "phase_index": 0,
-  "task_index": 2,
-  "reason": "Review requested changes (minor severity), retry budget available"
-}
-```
-
-### How the Tactical Planner Uses It
-
-The Tactical Planner calls the triage script instead of interpreting decision tables in prose:
-
-- **Mode 3 (phase triage):** `node .github/orchestration/scripts/triage.js --state <path> --level phase --project-dir <dir>`
-- **Mode 4 (task triage):** `node .github/orchestration/scripts/triage.js --state <path> --level task --project-dir <dir>`
-
-### Task-Level Decision Table (11 rows)
-
-The triage engine evaluates these conditions in order (first match wins):
-
-| # | Conditions | Action |
-|---|-----------|--------|
-| 1 | `review_verdict = approved` | `advanced` |
-| 2 | `review_verdict = rejected`, severity = `critical` | `halted` |
-| 3 | `review_verdict = rejected`, severity = `minor` | `halted` |
-| 4 | `review_verdict = changes_requested`, severity = `critical` | `halted` |
-| 5 | `review_verdict = changes_requested`, severity = `minor`, retries < max | `corrective_task_issued` |
-| 6 | `review_verdict = changes_requested`, severity = `minor`, retries >= max | `halted` |
-| 7 | `review_verdict = changes_requested`, severity = null, retries < max | `corrective_task_issued` |
-| 8 | `review_verdict = changes_requested`, severity = null, retries >= max | `halted` |
-| 9 | No review doc exists | Error: `DOCUMENT_NOT_FOUND` |
-| 10 | Invalid verdict value | Error: `INVALID_VERDICT` |
-| 11 | Target fields already non-null | Error: `IMMUTABILITY_VIOLATION` |
-
-### Phase-Level Decision Table (5 rows)
-
-| # | Conditions | Action |
-|---|-----------|--------|
-| 1 | `phase_review_verdict = approved` | `advanced` |
-| 2 | `phase_review_verdict = changes_requested` | `corrective_tasks_issued` |
-| 3 | `phase_review_verdict = rejected` | `halted` |
-| 4 | No phase review doc exists | Error: `DOCUMENT_NOT_FOUND` |
-| 5 | Target fields already non-null | Error: `IMMUTABILITY_VIOLATION` |
-
-### Write Behavior
-
-The triage CLI entry point (`.github/orchestration/scripts/triage.js`) — not the domain function — performs the `state.json` write:
-
-1. Read current `state.json`
-2. Verify target verdict/action fields are `null` (immutability check)
-3. Call `executeTriage()` to get the resolved verdict and action
-4. Write the updated `state.json` atomically (`JSON.stringify` → `fs.writeFileSync`)
-
----
-
-## State Transition Validator
-
-The validator checks a proposed `state.json` against all 15 documented invariants, ensuring every state transition is legal before it's committed.
-
-### CLI Usage
-
-```bash
-node .github/orchestration/scripts/validate-state.js --current path/to/current-state.json --proposed path/to/proposed-state.json
-```
-
-### Output (valid)
-
-```json
-{
-  "valid": true,
-  "invariants_checked": 15
-}
-```
-
-Exit code: `0`
-
-### Output (invalid)
-
-```json
-{
-  "valid": false,
-  "invariants_checked": 15,
-  "errors": [
-    {
-      "invariant": "V3",
-      "message": "Only one task may be in_progress at a time. Found 2 tasks in_progress.",
-      "severity": "critical"
-    }
+  "success": true,
+  "action": "execute_task",
+  "context": {
+    "tier": "execution",
+    "phase_index": 1,
+    "task_index": 3,
+    "phase_id": "P01",
+    "task_id": "P01-T03",
+    "reason": "Task P01-T03 has handoff but stage is coding"
+  },
+  "mutations_applied": [
+    "task.status → in_progress",
+    "task.stage → coding"
   ]
 }
 ```
 
-Exit code: `1`
+### Error
 
-### How the Tactical Planner Uses It
+```json
+{
+  "success": false,
+  "error": "Validation failed: [V6] Only one task may be in_progress",
+  "event": "task_handoff_created",
+  "state_snapshot": { "current_phase": 1 },
+  "mutations_applied": []
+}
+```
 
-Before every `state.json` write, the Tactical Planner:
-
-1. Writes the proposed state to a temporary file
-2. Calls `node .github/orchestration/scripts/validate-state.js --current <current> --proposed <proposed>`
-3. On `valid: true` — commits the write
-4. On `valid: false` — records errors in `errors.active_blockers`, halts, does NOT commit
-
-### Invariant Catalog (V1–V15)
-
-| ID | Invariant | Description |
-|----|-----------|-------------|
-| V1 | Task status transitions | Tasks can only transition through allowed paths (`not_started` → `in_progress` → `complete`/`failed`) |
-| V2 | Phase status transitions | Phases follow allowed status progressions |
-| V3 | Single active task | Only one task may be `in_progress` across the entire project |
-| V4 | Planning gate | `planning.human_approved` must be `true` before `current_tier = execution` |
-| V5 | Phase count limit | `phases.length <= limits.max_phases` |
-| V6 | Task count limit | `phase.tasks.length <= limits.max_tasks_per_phase` |
-| V7 | Retry count limit | `task.retries <= limits.max_retries_per_task` |
-| V8 | Retry monotonicity | Retry counts never decrease |
-| V9 | Timestamp monotonicity | `project.updated` never decreases |
-| V10 | Tier progression | Pipeline tiers follow allowed progression order |
-| V11 | Phase completion | Phase status is `complete` only when all tasks are `complete` |
-| V12 | Execution status consistency | Execution status reflects the state of its phases |
-| V13 | Planning step ordering | Planning steps complete in required sequential order |
-| V14 | Write ordering | Review verdict/action fields follow required sequencing |
-| V15 | Cross-task immutability | Completed task fields cannot be modified |
 
 ---
 
-## CLI Conventions
+## Next Steps
 
-All scripts follow consistent conventions:
-
-- **CommonJS modules** with `'use strict'`
-- **Shebang line:** `#!/usr/bin/env node`
-- **`if (require.main === module)` guard** — allows both CLI and programmatic use
-- **`parseArgs()` exported** — CLI argument parsing is testable
-- **GNU long-option style:** `--state`, `--level`, `--current`, `--proposed`
-- **Exit codes:** `0` = success, `1` = failure
-- **stdout** = structured JSON output, **stderr** = diagnostics and crash messages
-- **Zero external dependencies** — Node.js built-ins only
-
-## Testing
-
-All scripts have comprehensive test suites using `node:test`:
-
-```bash
-# Run all tests
-node .github/orchestration/scripts/tests/constants.test.js
-node .github/orchestration/scripts/tests/resolver.test.js
-node .github/orchestration/scripts/tests/state-validator.test.js
-node .github/orchestration/scripts/tests/triage-engine.test.js
-
-# Or validate-state CLI end-to-end
-node .github/orchestration/scripts/tests/validate-state.test.js
-```
-
-Test coverage targets:
-- Every `NEXT_ACTIONS` enum value has at least one test case (~35 paths)
-- Every decision table row has at least one test (16 rows)
-- Every invariant has positive and negative test cases (V1–V15)
-- Error cases: `DOCUMENT_NOT_FOUND`, `INVALID_VERDICT`, `IMMUTABILITY_VIOLATION`
+- [Pipeline](pipeline.md) — Understand the pipeline stages and flow diagrams
+- [Configuration](configuration.md) — Configure pipeline settings and human gates
+- [Validation](validation.md) — Run the validator and interpret results
