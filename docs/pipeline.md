@@ -2,6 +2,18 @@
 
 The orchestration pipeline takes a project from idea through planning, execution, and review. The Orchestrator operates as an event-driven controller: it signals events to `pipeline.js`, parses JSON results, and routes on a 19-action table. The pipeline script (`pipeline.js`) is the sole state-mutation authority — it internalizes all state transitions, validation, and next-action resolution to maximize determinism in your agentic SDLC.
 
+```mermaid
+flowchart LR
+    PL["pipeline.js (state + routing)"]
+    ORC["Orchestrator"]
+    AG["Subagents"]
+
+    PL -- "action" --> ORC
+    ORC -- "event" --> PL
+    ORC -- "delegate task" --> AG
+    AG -- "document output" --> ORC
+```
+
 ## Pipeline Tiers
 
 The pipeline progresses through four major tiers:
