@@ -16,8 +16,8 @@ flowchart TD
     subgraph PLANNING [Planning]
         direction TB
         RESEARCH[Researcher] --> |Research| PRD[Product Manager]
-        PRD --> |Requirements, Research| DESIGN[Create UI/UX Design]
-        DESIGN --> |Design, Requirements, Research| ARCH[Create Architecture Plan]
+        PRD --> |Requirements, Research| DESIGN[UX Designer]
+        DESIGN --> |Design, Requirements, Research| ARCH[Architect]
         ARCH --> |Requirements, Architecture, Design, Research| MASTERPLAN[Create Master Plan]
     end
 
@@ -25,7 +25,7 @@ flowchart TD
 
     subgraph EXECUTION [Execution Loop]
         direction TB
-        GATE1 --> PHASE[Plan Phase]
+        GATE1 --> PHASE[Plan Phase Tactical Planner]
         PHASE --> HANDOFF[Plan Task]
         HANDOFF --> |handoff| CODE[Code]
         CODE --> |code, task report|REVIEW[Code Review]
