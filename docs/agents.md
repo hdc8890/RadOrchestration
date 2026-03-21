@@ -32,7 +32,7 @@ The Brainstormer works directly with the human in a conversational loop — aski
 
 **Output:** `BRAINSTORMING.md` — validated ideas, scope boundaries, target users, and problem statements.
 
-**Skills:** `brainstorm`
+**Skills:** `orchestration`, `brainstorm`
 
 ---
 
@@ -45,7 +45,7 @@ The Orchestrator is the entry point for all project interactions. It signals eve
 **Input:** Human prompts, `state.json`, pipeline script results
 **Output:** None — strictly read-only, prompts agents to do work.
 
-**Skills:** `log-error`
+**Skills:** `orchestration`, `log-error`
 
 ---
 
@@ -59,7 +59,7 @@ The Research agent analyzes the existing project structure, technology stack, pa
 
 **Output:** `RESEARCH-FINDINGS.md` — codebase analysis, technology inventory, patterns discovered, constraints, and recommendations.
 
-**Skills:** `research-codebase`
+**Skills:** `orchestration`, `research-codebase`
 
 ---
 
@@ -73,7 +73,7 @@ Translates technical research and brainstorming output into structured requireme
 
 **Output:** `PRD.md` — functional requirements, non-functional requirements, user stories, etc.
 
-**Skills:** `create-prd`
+**Skills:** `orchestration`, `create-prd`
 
 ---
 
@@ -87,7 +87,7 @@ Defines user flows, component layouts, interaction states, responsive behavior, 
 
 **Output:** `DESIGN.md` — user flows, layout specifications, component definitions, states, breakpoints, and accessibility requirements.
 
-**Skills:** `create-design`
+**Skills:** `orchestration`, `create-design`
 
 ---
 
@@ -101,7 +101,7 @@ The Architect reads Research, PRD, and Design to produce the technical architect
 
 **Output:** `ARCHITECTURE.md`, `MASTER-PLAN.md`
 
-**Skills:** `create-architecture`, `create-master-plan`
+**Skills:** `orchestration`, `create-architecture`, `create-master-plan`
 
 ---
 
@@ -121,7 +121,7 @@ The Tactical Planner is a pure planning agent that operates in 3 modes:
 
 **Output:**`PHASE-PLAN.md`, `PHASE-REPORT.md`, `TASK-HANDOFF.md`
 
-**Skills:** `create-phase-plan`, `create-task-handoff`, `generate-phase-report`
+**Skills:** `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report`
 
 ---
 
@@ -135,7 +135,7 @@ Reads a single Task Handoff, implements the code changes, writes tests, runs the
 
 **Output:** Source code, tests, `TASK-REPORT.md`
 
-**Skills:** `execute-coding-task`, `generate-task-report`, `run-tests`
+**Skills:** `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests`
 
 ---
 
@@ -154,7 +154,7 @@ The Reviewer operates at three levels:
 
 **Output:** `CODE-REVIEW.md`, `PHASE-REVIEW.md`
 
-**Skills:** `review-task`, `review-phase`
+**Skills:** `orchestration`, `review-task`, `review-phase`
 
 ## Next Steps
 

@@ -2,20 +2,24 @@
 
 The orchestration system includes a zero-dependency Node.js CLI tool that validates the entire ecosystem — agents, skills, instructions, configuration, cross-references, and file structure. Run it any time you add, rename, or change orchestration components to catch misconfigurations before they break the pipeline.
 
+> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+
 ## Quick Start
 
 ```bash
+# Default .github root shown. Adjust if you configured a custom orch_root.
+
 # Run all checks
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js
 
 # Verbose output (show passing checks too)
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --verbose
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js --verbose
 
 # Check a single category
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --category agents
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js --category agents
 
 # CI-friendly (no color, exits 1 on failure)
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --no-color
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js --no-color
 ```
 
 **Exit codes:** `0` = all checks passed (warnings allowed), `1` = one or more failures.
@@ -40,7 +44,7 @@ The validator runs seven categories of checks in sequence. Each check produces r
 
 ### 1. Structure
 
-Verifies the required `.github/` layout:
+Verifies the required `.github/` layout _(or your [configured root](configuration.md))_:
 
 - Required directories exist: `agents/`, `skills/`, `instructions/`
 - Required files exist: `orchestration.yml`, `copilot-instructions.md`
@@ -120,8 +124,8 @@ Use `--verbose` to see all passing checks. Use `--quiet` for just the summary li
 The validator is designed for CI pipelines:
 
 ```bash
-# In your CI config
-node .github/skills/validate-orchestration/scripts/validate-orchestration.js --no-color
+# Default .github root shown. Adjust if you configured a custom orch_root.
+node .github/skills/orchestration/scripts/validate/validate-orchestration.js --no-color
 ```
 
 - Exit code `0` means all checks passed
@@ -136,7 +140,7 @@ Run validation after:
 - Changing `orchestration.yml`
 - Modifying instruction files
 - Adding prompt files
-- Any structural changes to `.github/`
+- Any structural changes to `.github/` _(or your [configured root](configuration.md))_
 
 ## Next Steps
 

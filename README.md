@@ -85,13 +85,13 @@ Pipeline routing, triage, and state validation are handled by a unified pipeline
 
 ### Composable Skills
 
-Seventeen reusable skills bundle domain knowledge, templates, and instructions. Agents are composed with the skills they need — the system can be extended with new agents, capabilities, or adapted to new workflows by remixing skills.
+Eighteen reusable skills bundle domain knowledge, templates, and instructions. Agents are composed with the skills they need — the system can be extended with new agents, capabilities, or adapted to new workflows by remixing skills.
 
 [Learn more about skills →](docs/skills.md)
 
 ### Configurable Pipeline
 
-A single `orchestration.yml` controls everything: project storage, pipeline limits, error severity classification, git strategy, and human gate behavior. Sensible defaults out of the box, fully customizable.
+A single `orchestration.yml` controls everything: project storage, pipeline limits, and human gate behavior. Sensible defaults out of the box, fully customizable.
 
 [Learn more about configuration →](docs/configuration.md)
 
@@ -107,23 +107,16 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 
 ## Getting Started
 
-### Prerequisites
-
-- **Node.js v18+** — for CLI scripts and validation (no npm install needed)
-- **GitHub Copilot** in VS Code with agent mode enabled
-
-### Quick Start
-
-1. Clone the repo and open in VS Code with GitHub Copilot
-2. Copy the `.github/` directory into the root of your target project
-3. Run `/configure-system` to set up `orchestration.yml`
-4. *(Optional)* Use `@Brainstormer` to explore and refine your ideas into goals
-5. Use `@Orchestrator` with your project goals to start the pipeline
-6. Use `@Orchestrator` to continue — it reads `state.json` and picks up where it left off
-
 [Full getting started guide →](docs/getting-started.md)
 
-> **Migrating an existing project?** Run `node .github/orchestration/scripts/migrate-to-v4.js` to upgrade `state.json` files from earlier schema versions. The script creates `.backup` copies before writing.
+### Alternative: Manual Installation
+
+1. Clone the repo and open in VS Code with GitHub Copilot
+2. Copy the `.github/` directory _(or your [configured root](docs/configuration.md))_ into the root of your target project
+3. Run `/configure-system` to set up `orchestration.yml`
+4. Use `Orchestrator` agent with your project goals to start the pipeline
+
+> **Migrating an existing project?** Run `node .github/skills/orchestration/scripts/migrate-to-v4.js` to upgrade `state.json` files from earlier schema versions. The script creates `.backup` copies before writing.
 
 ## Documentation
 
@@ -132,11 +125,11 @@ A zero-dependency Node.js CLI validates the entire orchestration ecosystem — a
 | [Getting Started](docs/getting-started.md) | Installation, first project walkthrough, common commands |
 | [Agents](docs/agents.md) | All 9 agents — roles, access control, design constraints |
 | [Pipeline](docs/pipeline.md) | Planning and execution flow, human gates, error handling |
-| [Skills](docs/skills.md) | All 17 skills and how they compose with agents |
+| [Skills](docs/skills.md) | All 18 skills and how they compose with agents |
 | [Configuration](docs/configuration.md) | `orchestration.yml` reference — all options explained |
 | [Project Structure](docs/project-structure.md) | File layout, naming conventions, document types, state management |
 | [Pipeline Script](docs/scripts.md) | Unified event-driven CLI — routing, triage, state mutations, validation |
-| [Validation](docs/validation.md) | The `validate-orchestration` CLI tool |
+| [Validation](docs/validation.md) | Zero-dependency validation CLI tool |
 | [Monitoring Dashboard](docs/dashboard.md) | Dashboard startup, features, data sources, real-time updates |
 
 ## Design Principles

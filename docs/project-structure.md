@@ -1,38 +1,46 @@
-# Project Structure
+﻿# Project Structure
 
 This page documents the file layout, naming conventions, document types, and state management model.
 
 ## Workspace Layout
 
+> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+
 ```
-.github/ 
-├── agents/                    # 9 agent definitions
+.github/
+├── agents/                    # Agent definitions
 │   └── ...
-├── skills/                    # 18 skill bundles
-│   └── ...
+├── skills/                    # Skill bundles
+│   ├── orchestration/         # Unified orchestration skill
+│   │   ├── SKILL.md           # Role-based router
+│   │   ├── config/
+│   │   │   └── orchestration.yml  # System configuration
+│   │   ├── schemas/
+│   │   │   └── state-v4.schema.json  # Canonical v4 state JSON Schema
+│   │   ├── references/
+│   │   │   ├── context.md     # System context (all agents)
+│   │   │   ├── pipeline-guide.md  # Pipeline guide (Orchestrator)
+│   │   │   └── validation-guide.md  # Validation guide (Reviewer, Tactical Planner)
+│   │   └── scripts/
+│   │       ├── pipeline.js    # Unified pipeline CLI (sole state writer)
+│   │       ├── migrate-to-v4.js  # Migration CLI tool
+│   │       ├── lib/           # Pipeline library modules
+│   │       │   └── ...
+│   │       ├── tests/         # Pipeline test files
+│   │       │   └── ...
+│   │       └── validate/      # Validator scripts
+│   │           ├── validate-orchestration.js  # Validator CLI entry point
+│   │           ├── lib/       # Validator library modules
+│   │           │   └── ...
+│   │           └── __tests__/ # Validator test files
+│   │               └── ...
+│   └── ...                    # Other skills
 ├── instructions/              # Scoped instruction files
 │   └── ...
 ├── prompts/                   # Utility prompt files
 │   └── ...
-├── orchestration/             # Runtime scripts and tests
-│   ├── schemas/               # JSON Schema definitions
-│   │   └── state-v4.schema.json  # Canonical v4 state JSON Schema
-│   └── scripts/
-│       ├── pipeline.js        # Unified pipeline CLI (sole state writer)
-│       ├── migrate-to-v4.js   # Migration CLI tool (v3 → v4 state upgrade)
-│       ├── lib/
-│       │   ├── constants.js
-│       │   ├── mutations.js
-│       │   ├── pipeline-engine.js
-│       │   ├── pre-reads.js
-│       │   ├── resolver.js
-│       │   ├── state-io.js
-│       │   └── validator.js
-│       └── tests/             # All test files (19 total)
-│           └── ...
-├── orchestration.yml          # System configuration
 ├── copilot-instructions.md    # Workspace-level instructions
-└── projects/                  # Project artifacts (default -- configurable via `orchestration.yml`)
+└── projects/                  # Project artifacts (default -- configurable via orchestration.yml)
     └── {PROJECT-NAME}/
         └── ...
 archive/                       # Historical design artifacts -- the plan that started this repository
@@ -156,7 +164,7 @@ Project files use `SCREAMING-CASE` (configurable) with the project name as a pre
 - Each project folder contains its own `state.json` that tracks the current phase, task, agent, and other relevant metadata. 
 - The pipeline script (`pipeline.js`) is the sole writer of `state.json` — no agent directly modifies it. 
 - Agents read `state.json` for context but never write to it.
-- The schema identifier is `orchestration-state-v4`. The full JSON Schema is defined in [`.github/orchestration/schemas/state-v4.schema.json`](../../.github/orchestration/schemas/state-v4.schema.json).
+- The schema identifier is `orchestration-state-v4`. The full JSON Schema is defined in [`.github/skills/orchestration/schemas/state-v4.schema.json`](../.github/skills/orchestration/schemas/state-v4.schema.json).
 
 ### Invariants
 
@@ -179,7 +187,8 @@ Prompt files provide utility workflows accessible via `/` commands in Copilot:
 | Prompt | Command | Purpose |
 |--------|---------|---------|
 | `configure-system.prompt.md` | `/configure-system` | Create or update `orchestration.yml`, scan for stale path references |
-| `execute-plan.prompt.md` | `/execute-plan` | Approve a Master Plan and begin execution |
+| `rad-plan.prompt.md` | `/rad-plan` | Start the full planning pipeline for a new project — Research through Master Plan |
+| `rad-execute.prompt.md` | `/rad-execute` | Approve a Master Plan and begin execution |
 
 ## Next Steps
 

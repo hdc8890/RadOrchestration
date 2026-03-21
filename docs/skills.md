@@ -58,7 +58,12 @@ To customize the **output format** of documents a skill produces, modify the ski
 |-------|-------------|---------|
 | `create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | Any |
 | `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | Any |
-| `validate-orchestration` | Validate all orchestration files — agents, skills, instructions, config, cross-references | Any |
+
+### System Skills
+
+| Skill | Description | Used By |
+|-------|-------------|---------|
+| `orchestration` | Orchestration system runtime, configuration, validation, and context. All pipeline agents load this skill for system context. The Orchestrator receives pipeline-specific guidance. Reviewers and Tactical Planners receive validation guidance. | All Agents |
 
 ## Skill-Agent Composition
 
@@ -66,15 +71,15 @@ Each agent is explicitly assigned skills in its `.agent.md` frontmatter. This ta
 
 | Agent | Skills |
 |-------|--------|
-| Brainstormer | `brainstorm` |
-| Orchestrator | `log-error` |
-| Research | `research-codebase` |
-| Product Manager | `create-prd` |
-| UX Designer | `create-design` |
-| Architect | `create-architecture`, `create-master-plan` |
-| Tactical Planner | `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
-| Coder | `execute-coding-task`, `generate-task-report`, `run-tests` |
-| Reviewer | `review-task`, `review-phase` |
+| Brainstormer | `orchestration`, `brainstorm` |
+| Orchestrator | `orchestration`, `log-error` |
+| Research | `orchestration`, `research-codebase` |
+| Product Manager | `orchestration`, `create-prd` |
+| UX Designer | `orchestration`, `create-design` |
+| Architect | `orchestration`, `create-architecture`, `create-master-plan` |
+| Tactical Planner | `orchestration`, `create-phase-plan`, `create-task-handoff`, `generate-phase-report` |
+| Coder | `orchestration`, `execute-coding-task`, `generate-task-report`, `run-tests` |
+| Reviewer | `orchestration`, `review-task`, `review-phase` |
 
 ## Skill Recommendation in Task Handoffs
 
@@ -82,10 +87,12 @@ When creating task handoffs, the Tactical Planner enumerates the agent skills di
 
 ## Creating New Skills
 
+> **Note:** Commands below use `.github` as the default orchestration root. If you've [configured a custom root](configuration.md), adjust paths accordingly.
+
 Use the `create-skill` meta-skill to scaffold a new skill:
 
 1. Invoke Copilot with a description of what the skill should do
-2. The skill is created under `.github/skills/{skill-name}/` with:
+2. The skill is created under `.github/skills/{skill-name}/` _(or your [configured root](configuration.md))_ with:
    - `SKILL.md` — the main skill file with frontmatter and instructions
    - `scripts/` — optional CLI tools
    - `references/` — optional background material
@@ -108,6 +115,29 @@ The `SKILL.md` file contains:
 - **Instructions** — step-by-step procedures
 - **Templates** — output document schemas
 - **Rules** — constraints and quality standards
+
+## Prompts
+
+Prompts (`.prompt.md` files) are slash-command shortcuts that invoke a specific agent with a predefined instruction. They differ from skills — skills provide knowledge bundles that agents load, while prompts trigger a workflow by sending a ready-made instruction directly to a target agent.
+
+### Prompt Inventory
+
+| Prompt | File | Agent | Description |
+|--------|------|-------|-------------|
+| `/rad-plan` | `.github/prompts/rad-plan.prompt.md` | Orchestrator | Start the full planning pipeline for a new project — Research through Master Plan |
+| `/rad-execute` | `.github/prompts/rad-execute.prompt.md` | Orchestrator | Continue a project through the orchestration pipeline |
+
+### rad-plan
+
+- **Purpose**: Kicks off the complete planning pipeline: Research → PRD → Design → Architecture → Master Plan.
+- **When to use**: When you have a project idea (either a free-text description or an existing `BRAINSTORMING.md` document) and want to produce a full planning suite in one shot.
+- **Behavior**: If a `BRAINSTORMING.md` exists for the project, it is used as the starting input. Otherwise, the user's description in the conversation is used. The Orchestrator presents the Master Plan for human approval when complete.
+
+### rad-execute
+
+- **Purpose**: Continues a project through the execution pipeline after the Master Plan has been approved.
+- **When to use**: After the planning pipeline completes and the Master Plan is approved, use this prompt to begin or resume phase execution.
+- **Behavior**: Instructs the Orchestrator to mark the plan as approved (if not already) and execute the project according to the Master Plan using the proper execution pipeline.
 
 ## Next Steps
 

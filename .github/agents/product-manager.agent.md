@@ -52,7 +52,7 @@ When spawned by the Orchestrator:
 11. **Save** to the path specified by the Orchestrator (typically `{PROJECT-DIR}/{NAME}-PRD.md`)
 
 ## Skills
-
+- **`orchestration`**: System context — agent roles, pipeline flow, naming conventions, key rules
 - **`create-prd`**: Primary skill — guides PRD creation workflow and provides the PRD template
 
 ## Output Contract
