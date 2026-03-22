@@ -1,6 +1,7 @@
 // installer/lib/prompts/getting-started.js
 
 import { select, input } from '@inquirer/prompts';
+import { INQUIRER_THEME } from '../theme.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -13,6 +14,7 @@ import path from 'node:path';
 export async function promptGettingStarted() {
   const tool = await select({
     message: 'Select your AI coding tool',
+    theme: INQUIRER_THEME,
     choices: [
       { name: 'GitHub Copilot', value: 'copilot' },
       { name: 'Cursor (coming soon)', value: 'cursor', disabled: true },
@@ -22,6 +24,7 @@ export async function promptGettingStarted() {
 
   const rawDir = await input({
     message: 'Target workspace directory',
+    theme: INQUIRER_THEME,
     default: process.cwd(),
     validate: (value) => {
       const resolved = path.resolve(value);

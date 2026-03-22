@@ -44,6 +44,13 @@ export const THEME = {
 export const FIGLET_FONT = 'Bloody';
 
 /**
+ * Shared theme for all @inquirer/prompts calls.
+ * Removes the default green ✔ checkmark from completed prompts.
+ * @type {{ prefix: { idle: string, done: string } }}
+ */
+export const INQUIRER_THEME = { prefix: { idle: '?', done: '' } };
+
+/**
  * Prints a section header line to stdout.
  * Format: "  ── ::  {title} ──...──" filling terminal width.
  * The ── segments and fill are THEME.rule (dim).

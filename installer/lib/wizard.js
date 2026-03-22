@@ -23,14 +23,14 @@ export async function runWizard({ skipConfirmation }) {
   console.log('');
   sectionHeader('::', 'Orchestration Root');
   console.log('');
-  console.log(THEME.hint('  The orchestration root is the folder inside your workspace where agents, skills, and prompts will be installed (e.g., .github).'));
+  console.log(THEME.hint('  Folder where agents, skills, and prompts are installed. Relative to workspace or absolute.'));
   console.log('');
   const orchRoot = await promptOrchRoot();
 
   console.log('');
   sectionHeader('::', 'Project Storage');
   console.log('');
-  console.log(THEME.hint('  The project storage path is where orchestration project files — PRDs, plans, task reports — will be saved.'));
+  console.log(THEME.hint('  Folder for project files (PRDs, plans, reports). Relative to workspace or absolute.'));
   console.log('');
   const projectStorage = await promptProjectStorage();
 

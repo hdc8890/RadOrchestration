@@ -63,3 +63,21 @@ export function resolveOrchRoot(workspaceDir, orchRoot) {
   }
   return path.join(workspaceDir, orchRoot);
 }
+
+/**
+ * Normalizes a user-entered path for storage in orchestration.yml.
+ * - Replaces all backslashes with forward slashes
+ * - Collapses consecutive forward slashes to a single slash
+ * - Strips trailing slash (unless the entire value is '/')
+ * Does NOT strip leading slashes — absolute paths are valid.
+ * @param {string} value
+ * @returns {string}
+ */
+export function normalizePath(value) {
+  let result = value.replace(/\\/g, '/');
+  result = result.replace(/\/+/g, '/');
+  if (result.length > 1) {
+    result = result.replace(/\/$/, '');
+  }
+  return result;
+}

@@ -1,6 +1,7 @@
 // installer/lib/prompts/pipeline-limits.js
 
 import { input } from '@inquirer/prompts';
+import { INQUIRER_THEME } from '../theme.js';
 
 /**
  * Returns true if value is a string representation of a positive integer (>= 1).
@@ -37,24 +38,28 @@ function isNonNegativeInteger(value) {
 export async function promptPipelineLimits() {
   const rawMaxPhases = await input({
     message: 'Maximum phases per project',
+    theme: INQUIRER_THEME,
     default: '10',
     validate: isPositiveInteger,
   });
 
   const rawMaxTasksPerPhase = await input({
     message: 'Maximum tasks per phase',
+    theme: INQUIRER_THEME,
     default: '8',
     validate: isPositiveInteger,
   });
 
   const rawMaxRetriesPerTask = await input({
     message: 'Maximum retries per task',
+    theme: INQUIRER_THEME,
     default: '2',
     validate: isNonNegativeInteger,
   });
 
   const rawMaxConsecutiveReviewRejections = await input({
     message: 'Maximum consecutive review rejections',
+    theme: INQUIRER_THEME,
     default: '3',
     validate: isPositiveInteger,
   });

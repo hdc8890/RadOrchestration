@@ -6,10 +6,15 @@ import assert from 'node:assert/strict';
 // Create mock functions before registering module mocks
 const selectMock = mock.fn(async () => 'SCREAMING_CASE');
 const inputMock = mock.fn(async () => 'orchestration-projects');
+const normalizePathMock = mock.fn((v) => v); // default: pass-through
 
 // Register module mock BEFORE dynamic import of the module under test
 mock.module('@inquirer/prompts', {
   namedExports: { select: selectMock, input: inputMock },
+});
+
+mock.module('../path-utils.js', {
+  namedExports: { normalizePath: normalizePathMock },
 });
 
 // Dynamic import after mock registration so the module uses the mocked @inquirer/prompts
@@ -88,5 +93,30 @@ describe('promptProjectStorage', () => {
     it('returns projectsNaming matching select return value', () => {
       assert.equal(customResult.projectsNaming, 'lowercase');
     });
+  });
+});
+
+describe('promptProjectStorage — normalization', () => {
+  before(async () => {
+    inputMock.mock.resetCalls();
+    selectMock.mock.resetCalls();
+    normalizePathMock.mock.resetCalls();
+  });
+
+  it('calls normalizePath with the raw input value', async () => {
+    inputMock.mock.mockImplementation(async () => '\\docs\\projects\\');
+    selectMock.mock.mockImplementation(async () => 'SCREAMING_CASE');
+    normalizePathMock.mock.mockImplementation((v) => v.replace(/\\/g, '/').replace(/\/$/, ''));
+    await promptProjectStorage();
+    assert.equal(normalizePathMock.mock.calls.length, 1);
+    assert.equal(normalizePathMock.mock.calls[0].arguments[0], '\\docs\\projects\\');
+  });
+
+  it('returns the normalized value as projectsBasePath', async () => {
+    inputMock.mock.mockImplementation(async () => '\\docs\\projects\\');
+    selectMock.mock.mockImplementation(async () => 'SCREAMING_CASE');
+    normalizePathMock.mock.mockImplementation(() => 'docs/projects');
+    const result = await promptProjectStorage();
+    assert.equal(result.projectsBasePath, 'docs/projects');
   });
 });

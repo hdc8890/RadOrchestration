@@ -1,6 +1,7 @@
 // installer/lib/prompts/gate-behavior.js
 
 import { select } from '@inquirer/prompts';
+import { INQUIRER_THEME } from '../theme.js';
 
 /**
  * Runs the "Gate Behavior" prompt section.
@@ -9,6 +10,7 @@ import { select } from '@inquirer/prompts';
 export async function promptGateBehavior() {
   const executionMode = await select({
     message: 'Execution mode',
+    theme: INQUIRER_THEME,
     default: 'ask',
     choices: [
       { name: 'ask — Prompt before each phase',  value: 'ask' },

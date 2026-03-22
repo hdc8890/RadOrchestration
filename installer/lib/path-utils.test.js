@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { toDockerPath, isValidFolderName, resolveOrchRoot } from './path-utils.js';
+import { toDockerPath, isValidFolderName, resolveOrchRoot, normalizePath } from './path-utils.js';
 
 // ── toDockerPath ─────────────────────────────────────────────────────────────
 
@@ -139,4 +139,38 @@ test('resolveOrchRoot - absolute orchRoot returned directly', () => {
 test('resolveOrchRoot - Windows workspace with relative orchRoot returns joined path', () => {
   const result = resolveOrchRoot('C:\\Users\\dev', '.github');
   assert.strictEqual(result, path.join('C:\\Users\\dev', '.github'));
+});
+
+// ── normalizePath ──────────────────────────────────────────────────────────────────────
+
+test('normalizePath - replaces backslashes with forward slashes', () => {
+  assert.strictEqual(normalizePath('docs\\projects'), 'docs/projects');
+});
+
+test('normalizePath - replaces mixed backslashes and forward slashes', () => {
+  assert.strictEqual(normalizePath('docs\\sub/projects'), 'docs/sub/projects');
+});
+
+test('normalizePath - strips trailing forward slash', () => {
+  assert.strictEqual(normalizePath('docs/projects/'), 'docs/projects');
+});
+
+test('normalizePath - collapses consecutive forward slashes', () => {
+  assert.strictEqual(normalizePath('docs//projects'), 'docs/projects');
+});
+
+test('normalizePath - preserves leading slash (absolute path)', () => {
+  assert.strictEqual(normalizePath('/absolute/path/'), '/absolute/path');
+});
+
+test('normalizePath - normalizes Windows absolute path', () => {
+  assert.strictEqual(normalizePath('C:\\dev\\root\\'), 'C:/dev/root');
+});
+
+test('normalizePath - clean relative path passes through unchanged', () => {
+  assert.strictEqual(normalizePath('orchestration-projects'), 'orchestration-projects');
+});
+
+test('normalizePath - lone slash is preserved', () => {
+  assert.strictEqual(normalizePath('/'), '/');
 });

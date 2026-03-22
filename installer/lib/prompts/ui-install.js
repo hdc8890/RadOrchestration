@@ -1,6 +1,7 @@
 // installer/lib/prompts/ui-install.js
 
 import { confirm, input } from '@inquirer/prompts';
+import { INQUIRER_THEME } from '../theme.js';
 import path from 'node:path';
 
 /**
@@ -11,6 +12,7 @@ import path from 'node:path';
 export async function promptUiInstall(workspaceDir) {
   const installUi = await confirm({
     message: 'Install the monitoring dashboard UI?',
+    theme: INQUIRER_THEME,
     default: true,
   });
 
@@ -20,6 +22,7 @@ export async function promptUiInstall(workspaceDir) {
 
   const rawDir = await input({
     message: 'Dashboard installation directory',
+    theme: INQUIRER_THEME,
     default: path.join(workspaceDir, 'ui'),
     validate: (value) => {
       if (value.trim() === '') {

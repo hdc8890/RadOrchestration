@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 const selectMock = mock.fn(async () => '.github');
 const inputMock = mock.fn(async () => 'my-custom-folder');
 const isValidFolderNameMock = mock.fn(() => true);
+const normalizePathMock = mock.fn((v) => v); // default: pass-through
 
 // Register module mocks BEFORE dynamic import of the module under test
 mock.module('@inquirer/prompts', {
@@ -14,7 +15,7 @@ mock.module('@inquirer/prompts', {
 });
 
 mock.module('../path-utils.js', {
-  namedExports: { isValidFolderName: isValidFolderNameMock },
+  namedExports: { isValidFolderName: isValidFolderNameMock, normalizePath: normalizePathMock },
 });
 
 // Dynamic import after mock registration so the module uses the mocked dependencies
@@ -126,5 +127,40 @@ describe('promptOrchRoot — absolute path as custom value', () => {
 
   it('returns absolute path as orchRoot', () => {
     assert.deepEqual(result, { orchRoot: '/opt/orch' });
+  });
+});
+
+describe('promptOrchRoot — custom value normalization', () => {
+  before(async () => {
+    selectMock.mock.resetCalls();
+    inputMock.mock.resetCalls();
+    normalizePathMock.mock.resetCalls();
+    selectMock.mock.mockImplementation(async () => 'custom');
+    isValidFolderNameMock.mock.mockImplementation(() => true);
+  });
+
+  it('calls normalizePath with the raw custom input value', async () => {
+    normalizePathMock.mock.resetCalls();
+    inputMock.mock.mockImplementation(async () => '/my/folder/');
+    normalizePathMock.mock.mockImplementation((v) => v.replace(/\/+$/, ''));
+    const result = await promptOrchRoot();
+    assert.equal(normalizePathMock.mock.calls.length, 1);
+    assert.equal(normalizePathMock.mock.calls[0].arguments[0], '/my/folder/');
+  });
+
+  it('returns the normalized value as orchRoot', async () => {
+    normalizePathMock.mock.resetCalls();
+    inputMock.mock.mockImplementation(async () => '/my/folder/');
+    normalizePathMock.mock.mockImplementation(() => '/my/folder');
+    const result = await promptOrchRoot();
+    assert.equal(result.orchRoot, '/my/folder');
+  });
+
+  it('does NOT call normalizePath for preset values (.github)', async () => {
+    normalizePathMock.mock.resetCalls();
+    selectMock.mock.mockImplementation(async () => '.github');
+    const result = await promptOrchRoot();
+    assert.equal(normalizePathMock.mock.calls.length, 0);
+    assert.equal(result.orchRoot, '.github');
   });
 });
