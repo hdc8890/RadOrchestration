@@ -13,6 +13,19 @@ Generate a UX Design document from the PRD. Before producing any content, triage
 - When the Orchestrator spawns the UX Designer Agent to create a Design document
 - When specifying component layouts, interaction states, and responsive behavior
 
+## When Not to Use This Skill
+- You only create designs when there is a UI or CLI involved
+- Do not force a design on a project that does not require one
+- Use this template when a project does not require a design: [DESIGN-NOT-REQUIRED.md](./templates/DESIGN-NOT-REQUIRED.md)
+
+## Templates
+
+| Output Path | Template | When to Use |
+|-------------|----------|-------------|
+| Full Design | [DESIGN.md](./templates/DESIGN.md) | Project has a visual UI (frontend, views, components) |
+| Flows only | [DESIGN-FLOWS-ONLY.md](./templates/DESIGN-FLOWS-ONLY.md) | Project has non-visual user-facing flows (CLI wizard, interactive terminal) |
+| Not required | [DESIGN-NOT-REQUIRED.md](./templates/DESIGN-NOT-REQUIRED.md) | Project has no user interaction (backend, scripts, instruction files) |
+
 ## Inputs Required
 
 | Input | Source | Description |
@@ -49,11 +62,3 @@ Generate a UX Design document from the PRD. Before producing any content, triage
 - **New components need full props**: Component name, props, design tokens, description — feeds into Architecture
 - **Accessibility is mandatory**: WCAG AA minimum; every interactive element must be addressed
 - **No code**: Component names and props only — implementation lives in tasks
-
-## Templates
-
-| Output Path | Template | When to Use |
-|-------------|----------|-------------|
-| Full Design | [DESIGN.md](./templates/DESIGN.md) | Project has a visual UI (frontend, views, components) |
-| Flows only | [DESIGN-FLOWS-ONLY.md](./templates/DESIGN-FLOWS-ONLY.md) | Project has non-visual user-facing flows (CLI wizard, interactive terminal) |
-| Not required | [DESIGN-NOT-REQUIRED.md](./templates/DESIGN-NOT-REQUIRED.md) | Project has no user interaction (backend, scripts, instruction files) |
