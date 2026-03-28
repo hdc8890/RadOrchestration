@@ -9,14 +9,15 @@ interface PipelineTierBadgeProps {
   executionStatus?: ExecutionStatus; // NEW — drives "Executing" (spinner) vs "Execution" (dot)
 }
 
-const TIER_CONFIG: Record<string, { label: string; cssVar: string }> = {
+const TIER_CONFIG = {
   planning: { label: "Planning", cssVar: "--tier-planning" },
-  execution: { label: "Execution", cssVar: "--tier-execution" },
-  review: { label: "Review", cssVar: "--tier-review" },
+  // label is never used directly for execution — resolveBadgeState() sets it explicitly per sub-status
+  execution: { label: "Approved", cssVar: "--tier-execution" },
+  review: { label: "Final Review", cssVar: "--tier-review" },
   complete: { label: "Complete", cssVar: "--tier-complete" },
   halted: { label: "Halted", cssVar: "--tier-halted" },
   not_initialized: { label: "Not Started", cssVar: "--tier-not-initialized" },
-};
+} satisfies Record<PipelineTier | "not_initialized", { label: string; cssVar: string }>;
 
 function resolveBadgeState(
   tier: PipelineTier | "not_initialized",
@@ -24,7 +25,7 @@ function resolveBadgeState(
   executionStatus: ExecutionStatus | undefined,
 ): { label: string; ariaLabel: string; isSpinning: boolean; cssVar: string } {
   const base = TIER_CONFIG[tier];
-  const cssVar = base.cssVar;
+  let cssVar = base.cssVar;
 
   let label: string;
   let isSpinning: boolean;
@@ -41,11 +42,16 @@ function resolveBadgeState(
       isSpinning = false;
     }
   } else if (tier === "execution") {
-    if (executionStatus === "in_progress") {
+    if (executionStatus === "halted") {
+      label = "Halted";
+      cssVar = "--tier-halted";
+      isSpinning = false;
+    } else if (executionStatus === "in_progress") {
       label = "Executing";
       isSpinning = true;
     } else {
-      label = "Execution";
+      // not_started, complete, or undefined → queued/approved state
+      label = "Approved";
       isSpinning = false;
     }
   } else {
