@@ -17,12 +17,26 @@ Orchestration pipeline skill for source control operations. Provides routing for
 
 ## Loading Instructions
 
-1. Determine your mode from the Orchestrator context:
+1. **Determine your mode** from the Orchestrator context:
    - Received `invoke_source_control_commit` → **commit mode**
-   - Received `invoke_source_control_pr` → **PR mode** (stub — see pr-guide.md)
-2. Read all reference documents for your mode before taking any action.
-3. Run the script for your mode; parse the JSON result from stdout.
-4. On any failure, invoke the `log-error` skill before signaling the final event.
+   - Received `invoke_source_control_pr` → **PR mode** (stub — see `pr-guide.md`)
+2. **Read all reference documents** for your mode before taking any action.
+3. **Execute the script** for your mode; parse the JSON result from stdout.
+4. **On any failure**, invoke the `log-error` skill before signaling the final event.
+5. **Always signal `task_committed`** — every code path ends here, no exceptions.
+
+## Error Handling
+
+Every scenario ends with signaling `task_committed`. The pipeline must never stall.
+
+| Scenario | Action | Signal `task_committed`? |
+|----------|--------|--------------------------|
+| Full success (committed + pushed) | Display success feedback | ✅ Yes |
+| Partial failure (committed, push failed) | Invoke `log-error` skill; display partial failure feedback | ✅ Yes |
+| Full failure (commit failed) | Invoke `log-error` skill; display full failure feedback | ✅ Yes |
+| `pipeline.source_control` absent | Display `ℹ` notice; skip commit | ✅ Yes |
+| Worktree path inaccessible | Invoke `log-error` skill; display error | ✅ Yes |
+| Script execution error | Invoke `log-error` skill; display error | ✅ Yes |
 
 ## Contents
 

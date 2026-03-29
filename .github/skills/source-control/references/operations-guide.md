@@ -190,3 +190,31 @@ Usage:
 - `✓` — after full success (committed + pushed)
 - `✗` — after partial failure (committed but push failed) or full failure (commit failed)
 - `ℹ` — when source control state is absent (graceful skip), or when reporting non-critical information
+
+---
+
+## 8. Feedback Output Patterns
+
+After parsing the JSON result from stdout, output one of these three patterns:
+
+**Full success** (exit code 0):
+```
+✓  Committed:  {commitMessage}
+✓  Pushed to:  origin/{branch}
+```
+
+**Partial failure** — committed but push failed (exit code 1):
+```
+✓  Committed:  {commitMessage}
+✗  Push failed: {error}
+   Error logged to project error log.
+   To retry: run `git push` from the worktree at {worktreePath}
+```
+
+**Full failure** — commit failed (exit code 2):
+```
+✗  Commit failed: {error}
+   Error logged to project error log.
+   Pipeline will continue without committing {taskId}.
+   To diagnose: run `git status` from the worktree at {worktreePath}
+```
