@@ -6,7 +6,7 @@ Agents communicate through structured markdown documents. Routing, triage, and s
 
 ## What It Does
 
-Tell the Orchestrator your project idea, and it coordinates **10 specialized agents** through a structured pipeline — research, requirements, design, architecture, planning, coding, and review — producing working software with full traceability from idea to implementation.  It's automated spec-driven development!
+Tell the Orchestrator your project idea, and it coordinates **12 specialized agents** through a structured pipeline — research, requirements, design, architecture, planning, coding, and review — producing working software with full traceability from idea to implementation.  It's automated spec-driven development!
 
 ```mermaid
 flowchart TD
@@ -63,7 +63,7 @@ build the UI in 1-shot.
 
 ### Specialized Agents
 
-Ten agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator coordinates but never writes. The Coder reads only its task handoff.
+Twelve agents with strict separation of concerns. Each agent has a defined role, scoped tool access, and explicit write permissions. The Orchestrator is a thin skill-driven coordinator — it loads the `orchestration` skill, signals pipeline events, and routes via a compact action routing table. Never writes files directly. The Coder reads only its task handoff.
 
 [Learn more about agents →](docs/agents.md)
 
@@ -81,7 +81,7 @@ Configurable critical human checkpoints are reliably enforced.  Humans approve t
 
 ### Deterministic Routing & Triage
 
-Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes ~18 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
+Pipeline routing, triage, and state validation are handled by a unified pipeline script (`pipeline.js`) — not LLM interpretation of prose. One event in, one deterministic action out. The script encodes 20 external actions as a pure event-action lookup, internalizes triage decisions, and validates state invariants before every write. Same input always produces the same output.
 
 [Learn more about the scripts →](docs/scripts.md)
 

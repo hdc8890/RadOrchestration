@@ -1,7 +1,6 @@
 ---
-name: Reviewer
+name: reviewer
 description: "Review code changes and entire phases against planning documents. Use when performing code review, evaluating code quality, checking architectural consistency, validating design adherence, assessing test coverage, reviewing security, performing phase-level integration review, or generating a final project review."
-argument-hint: "Provide the project name, review mode (code/phase/final), and relevant file paths."
 tools:
   - read
   - search
@@ -9,8 +8,7 @@ tools:
   - execute
   - todo
   - vscode/askQuestions
-model: Claude Opus 4.6 (copilot)
-agents: []
+model: claude-opus-4.6
 ---
 
 # Reviewer Agent

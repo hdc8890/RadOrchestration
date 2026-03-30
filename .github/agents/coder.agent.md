@@ -1,7 +1,6 @@
 ---
-name: Coder
+name: coder
 description: "Execute coding tasks from self-contained Task Handoff documents. Use when implementing code, writing tests, running builds, creating files, modifying source code, or executing implementation steps from a task handoff. Reads only the Task Handoff — produces code and a Task Report."
-argument-hint: "Provide the path to the task handoff document to execute."
 tools:
   - read
   - search
@@ -9,8 +8,7 @@ tools:
   - execute
   - todo
   - vscode/askQuestions
-model: Claude Sonnet 4.6 (copilot)
-agents: []
+model: claude-sonnet-4.6
 ---
 
 # Coder Agent
