@@ -1,6 +1,6 @@
 ---
 name: source-control
-description: 'Source control operations for the orchestration pipeline. Use when the Orchestrator spawns the Source Control Agent to commit or create a PR.'
+description: 'Source control operations for the orchestration pipeline. Use when the Orchestrator spawns the Source Control Agent to commit code or create a PR.  Also useful for adhoc source control operations by any agent or human such as correcting a PR based on review feedback.'
 ---
 
 # Source Control
@@ -11,15 +11,17 @@ Orchestration pipeline skill for source control operations. Provides routing for
 
 | Mode   | Reference Document                                                          | Script                                                  | Status       |
 |--------|-----------------------------------------------------------------------------|---------------------------------------------------------|--------------|
-| commit | [references/operations-guide.md](./references/operations-guide.md)         | [scripts/git-commit.js](./scripts/git-commit.js)       | Functional   |
-| commit | [references/git-state-guide.md](./references/git-state-guide.md)           | *(context only — no script)*                            | Functional   |
-| PR     | [references/pr-guide.md](./references/pr-guide.md)                         | [scripts/gh-pr.js](./scripts/gh-pr.js)                 | AUTO-PR stub |
+| commit         | [references/operations-guide.md](./references/operations-guide.md)         | [scripts/git-commit.js](./scripts/git-commit.js)       | Functional   |
+| commit         | [references/git-state-guide.md](./references/git-state-guide.md)           | *(context only — no script)*                            | Functional   |
+| PR             | [references/pr-guide.md](./references/pr-guide.md)                         | [scripts/gh-pr.js](./scripts/gh-pr.js)                 | AUTO-PR stub |
+| pr-corrections | [references/pr-corrections-guide.md](./references/pr-corrections-guide.md) | *(GitHub MCP — no script)*                              | Functional   |
 
 ## Loading Instructions
 
 1. **Determine your mode** from the Orchestrator context:
    - Received `invoke_source_control_commit` → **commit mode**
    - Received `invoke_source_control_pr` → **PR mode** (stub — see `pr-guide.md`)
+   - Received `invoke_source_control_pr_corrections` → **pr-corrections mode** (see `pr-corrections-guide.md`)
 2. **Read all reference documents** for your mode before taking any action.
 3. **Execute the script** for your mode; parse the JSON result from stdout.
 4. **On any failure**, invoke the `log-error` skill before completing.
@@ -45,5 +47,6 @@ This skill bundles:
 - **`references/operations-guide.md`** — Commit operations: staging, message construction, commit+push, error patterns
 - **`references/git-state-guide.md`** — Reading pipeline.source_control from state; fallback behavior; pre-op validation
 - **`references/pr-guide.md`** — PR placeholder stub (AUTO-PR project scope)
+- **`references/pr-corrections-guide.md`** — Review PR comments critically, implement fixes, respond per comment, commit+push
 - **`scripts/git-commit.js`** — CLI script: stage + commit + push; returns structured JSON result
 - **`scripts/gh-pr.js`** — PR script stub; returns structured not-implemented JSON
