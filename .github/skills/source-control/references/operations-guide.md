@@ -44,19 +44,39 @@ The commit message format is:
 
 ```
 {prefix}({taskId}): {handoffTitle}
+
+{body}
 ```
 
 Where:
 - `{prefix}` — resolved from the prefix resolution table above
 - `{taskId}` — the task identifier in the format `P{NN}-T{NN}` (e.g., `P01-T02`)
 - `{handoffTitle}` — the task title from the handoff document
+- `{body}` — 3–6 prose lines drawn from the task handoff's **description** and/or **goals** fields; omitted when no description or goals content is present
 
-Example:
+Body construction rules:
+- Separate subject from body with exactly one blank line (standard conventional-commit spec)
+- Body is 3–6 lines drawn from the task handoff’s **description** and/or **goals** fields
+- Each line is a plain prose sentence with bullet; no trailing whitespace
+- Multi-line string is passed as a single `--message` argument (newlines embedded as `\n`)
+- Body is **omitted** if the handoff has no description or goals content
+
+Example (with body):
+```
+feat(P02-T03): Add remote_url detection to source_control_init
+
+- Detects the GitHub HTTPS remote URL from git remote get-url origin.
+- Converts SSH remotes (git@github.com:org/repo.git) to HTTPS.
+- Stores remote_url and compare_url in pipeline.source_control.
+- Enables branch compare links in the monitoring dashboard.
+```
+
+Example (title-only, no body):
 ```
 feat(P02-T05): Create scripts/git-commit.js
 ```
 
-Example with fallback:
+Example with fallback prefix:
 ```
 chore(P02-T08): Copy pipeline-engine.js to staging area
 ```
