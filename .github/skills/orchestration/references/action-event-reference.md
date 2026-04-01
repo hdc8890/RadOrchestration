@@ -21,13 +21,14 @@ Every `result.action` value maps to exactly one Orchestrator operation. All bran
 | 11 | `spawn_phase_reviewer` | Agent spawn | Spawn **reviewer** agent for phase-level review. Output: reports/{NAME}-PHASE-REVIEW-P{NN}-{TITLE}.md | `phase_review_completed --doc-path <output-path>` |
 | 12 | `spawn_final_reviewer` | Agent spawn | Spawn **reviewer** agent for final comprehensive review. Output: {NAME}-FINAL-REVIEW.md | `final_review_completed --doc-path <output-path>` |
 | 13 | `request_plan_approval` | Human gate | Display Master Plan summary to the human. Ask human to approve or reject. | `plan_approved` (if approved) or `plan_rejected` (if rejected) — no context payload |
-| 14 | `request_final_approval` | Human gate | Display final review to the human. Ask human to approve or request changes. | `final_approved` (if approved) or `final_rejected` (if rejected) — no context payload |
+| 14 | `request_final_approval` | Human gate | Display final review to the human. Ask human to approve or request changes. **PR link:** If `pipeline.source_control.pr_url` is present in state, include a `PR: {pr_url}` line in the prompt so the reviewer can navigate directly to the pull request. If `pr_url` is absent, omit the PR line entirely — do not show an empty placeholder or error. | `final_approved` (if approved) or `final_rejected` (if rejected) — no context payload |
 | 15 | `gate_task` | Human gate | Show task results to the human. Wait for approval. | `gate_approved --gate-type task` (if approved) or `gate_rejected --gate-type task --reason "<reason>"` (if rejected) |
 | 16 | `gate_phase` | Human gate | Show phase results to the human. Wait for approval. | `gate_approved --gate-type phase` (if approved) or `gate_rejected --gate-type phase --reason "<reason>"` (if rejected) |
 | 17 | `ask_gate_mode` | Human gate | Present the three gate mode options (`task`, `phase`, `autonomous`) to the operator. Wait for selection. | `gate_mode_set --gate-mode <chosen>` |
 | 18 | `display_halted` | Terminal | Display `result.context.message` to the human. **Loop terminates.** | *(none — terminal action)* |
 | 19 | `display_complete` | Terminal | Display completion summary to the human. **Loop terminates.** | *(none — terminal action)* |
 | 20 | `invoke_source_control_commit` | Agent spawn | Spawn **source-control** in commit mode. The agent reads `pipeline.source_control` from state, constructs the commit message, executes `git-commit.js`, and outputs a structured commit result block. Extract `commitHash` and `pushed` from the agent's `## Commit Result` JSON block in its output. | `task_committed --commit-hash <hash> --pushed <true|false>` |
+| 21 | `invoke_source_control_pr` | Agent spawn | Spawn **source-control** in PR mode. The agent reads `pipeline.source_control` and `final_review.doc_path` from state, executes `gh-pr.js`, and outputs a structured PR result block. Extract `pr_url` and `pr_number` from the agent's `## PR Result` JSON block in its output. | `pr_created [--pr-url <url>]` |
 
 ## Event Signaling Reference
 
@@ -57,6 +58,8 @@ These are the exact event names passed to `--event`:
 | `code_review_completed` | `--doc-path <path>` | After Reviewer finishes code review |
 | `task_commit_requested` | *(none)* | Signaled internally after `code_review_completed` when `auto_commit: always` and review verdict is approved. Triggers Source Control Agent spawn. |
 | `task_committed` | `--commit-hash <hash> --pushed <true\|false>` | After Source Control Agent completes. Extract `commitHash` and `pushed` from the agent's `## Commit Result` JSON block. |
+| `pr_requested` | *(none)* | Signaled internally after `final_review_completed` when `auto_pr: always` and `pr_url` is **undefined** (absent from state — not yet attempted). A `null` value means PR creation was attempted but no URL is available; `null` does **not** re-trigger `pr_requested`. Validation checkpoint before Source Control Agent spawn in PR mode. |
+| `pr_created` | `--pr-url <url>` *(optional)* | After Source Control Agent completes PR creation. Extract `pr_url` and `pr_number` from the agent's `## PR Result` JSON block. On success, signal with `--pr-url <url>`. On failure (`pr_url` is `null` in the result), signal `pr_created` **without** the `--pr-url` flag — the pipeline CLI will omit `pr_url` from context and the mutation handler will coalesce it to `null`. Writes `pr_url` to `state.pipeline.source_control`. |
 | `phase_report_created` | `--doc-path <path>` | After Tactical Planner finishes phase report |
 | `phase_review_completed` | `--doc-path <path>` | After Reviewer finishes phase review |
 | `gate_mode_set` | `--gate-mode task\|phase\|autonomous` | After operator selects gate mode |
