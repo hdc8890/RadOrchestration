@@ -7,6 +7,7 @@ tools:
   - read
   - execute
   - todo
+  - github/*
 model: claude-sonnet-4.6
 ---
 
