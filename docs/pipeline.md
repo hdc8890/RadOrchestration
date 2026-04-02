@@ -318,7 +318,7 @@ Three new events support source control automation. See [Source Control Automati
 
 | Event | Triggered By | Context Shape | Mutation |
 |-------|-------------|---------------|----------|
-| `source_control_init` | `rad-execute-parallel` after worktree creation | `{ branch, base_branch, worktree_path, auto_commit, auto_pr }` | Writes `pipeline.source_control` (idempotent full-replacement) |
+| `source_control_init` | `execute-parallel` skill after worktree creation | `{ branch, base_branch, worktree_path, auto_commit, auto_pr }` | Writes `pipeline.source_control` (idempotent full-replacement) |
 | `task_commit_requested` | Resolver after task approved when `auto_commit: always` | `{}` | No state change; returns `invoke_source_control_commit` action |
 | `task_committed` | Orchestrator after Source Control Agent completes | `{ commitHash, pushed, error }` | Advances task pointer; resumes normal pipeline flow |
 

@@ -5,7 +5,7 @@ The orchestration pipeline's source control automation feature enables automatic
 ## Quick Start
 
 1. **Configure once**: Run `configure-system` or the installer to set `auto_commit` in `orchestration.yml`.
-2. **Set up per project**: `rad-execute-parallel` asks (or applies) your source control preference before launching execution.
+2. **Set up per project**: The `execute-parallel` skill asks (or applies) your source control preference before launching execution.
 3. **Work normally**: Every approved task is committed and pushed automatically when `auto_commit: always`.
 
 ## Configuration
@@ -28,7 +28,7 @@ Per-project values persisted via `source_control_init` take precedence over thes
 
 ## Setup
 
-The `rad-execute-parallel` script handles source control setup immediately after worktree creation:
+The `execute-parallel` skill handles source control setup immediately after worktree creation:
 
 - After worktree creation, the setup step reads `auto_commit` and `auto_pr` from `orchestration.yml`.
 - If either is `ask`, the operator is prompted to choose `always` or `never` for this project run.
@@ -38,7 +38,7 @@ The `rad-execute-parallel` script handles source control setup immediately after
 
 ### Branch Publication
 
-`rad-execute-parallel` publishes the branch to the remote immediately after worktree creation, before calling `pipeline.js --event source_control_init`:
+The `execute-parallel` skill publishes the branch to the remote immediately after worktree creation, before calling `pipeline.js --event source_control_init`:
 
 - `git push -u origin {branch}` is run from the worktree path; push failure is non-blocking — the error is logged and the init continues.
 - The `source_control_init` event itself remains idempotent — safe to re-run without corrupting state.
@@ -48,7 +48,7 @@ The `rad-execute-parallel` script handles source control setup immediately after
 
 | Event | Triggered by | Action returned | Notes |
 |-------|-------------|----------------|-------|
-| `source_control_init` | `rad-execute-parallel` after worktree creation | *(state write only)* | Idempotent; safe to re-run |
+| `source_control_init` | `execute-parallel` skill after worktree creation | *(state write only)* | Idempotent; safe to re-run |
 | `task_commit_requested` | Resolver after task approved (when `auto_commit: always`) | `invoke_source_control_commit` | Skipped when `auto_commit: never` or absent |
 | `task_committed` | Orchestrator after agent completes commit | *(next-task action)* | Resumes normal pipeline flow |
 | `pr_requested` | Resolver after final review completed (when `auto_pr: always`) | `invoke_source_control_pr` | Triggers PR creation via `gh` CLI |
@@ -155,7 +155,7 @@ The Source Control Agent produces structured feedback for every operation outcom
 **Graceful Absence Notice:**
 ```
 ℹ  Source control not initialized. Skipping commit for TASK-3.
-   To enable auto-commit: re-run rad-execute-parallel before launching execution.
+   To enable auto-commit: re-run the execute-parallel skill before launching execution.
 ```
 
 On any failure, the error details are written to the project error log via the `log-error` skill. The pipeline always continues — it does not stall on source control failures.

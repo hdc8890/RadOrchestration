@@ -59,6 +59,12 @@ To customize the **output format** of documents a skill produces, modify the ski
 | `create-agent` | Scaffold new agent definitions (`.agent.md`) with proper frontmatter and tool declarations | any |
 | `create-skill` | Scaffold new skills with `SKILL.md`, directory structure, and optional scripts/references | any |
 
+### Infrastructure Skills
+
+| Skill | Description | Used By |
+|-------|-------------|---------|
+| `execute-parallel` | Set up a parallel git worktree for a project and launch orchestration execution in it | any |
+
 ### System Skills
 
 | Skill | Description | Used By |
