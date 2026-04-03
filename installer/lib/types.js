@@ -42,6 +42,7 @@
  * @property {number} fileCount - Number of files copied
  * @property {boolean} success - Whether the copy succeeded
  * @property {string} [error] - Error message if failed
+ * @property {boolean} [skipped] - True when source directory did not exist (silent skip)
  */
 
 /**
