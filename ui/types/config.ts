@@ -71,4 +71,5 @@ export interface ConfigPutResponse {
 /** API error response */
 export interface ConfigErrorResponse {
   error: string;
+  details?: ConfigValidationErrors;
 }

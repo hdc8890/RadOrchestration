@@ -97,8 +97,8 @@ export function ConfigForm({ config, errors, onChange }: ConfigFormProps) {
       case "toggle-group":
         return (
           <ToggleGroup
-            value={[value as string]}
-            onValueChange={(newVal) => onChange(field.key, newVal[0])}
+            value={typeof value === 'string' ? [value] : []}
+            onValueChange={(newVal) => { if (newVal.length > 0) onChange(field.key, newVal[0]); }}
           >
             {field.options!.map((opt) => (
               <ToggleGroupItem key={opt} value={opt}>

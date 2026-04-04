@@ -309,6 +309,22 @@ test("ToggleGroup onChange produces (dotPath, selectedOptionString) pair", () =>
   assert.deepStrictEqual(calls[0], ["projects.naming", "lowercase"]);
 });
 
+test("ToggleGroup guards against undefined value — empty array does not fire onChange", () => {
+  const calls: [string, unknown][] = [];
+  const onChange = (path: string, value: unknown) => calls.push([path, value]);
+  // Simulate: onValueChange receives empty array (deselection) — guard prevents call
+  const newVal: string[] = [];
+  if (newVal.length > 0) onChange("projects.naming", newVal[0]);
+  assert.strictEqual(calls.length, 0, "onChange should not fire for empty array");
+});
+
+test("ToggleGroup value prop handles undefined gracefully (produces empty array)", () => {
+  const value: unknown = undefined;
+  // Simulate the guard: typeof value === 'string' ? [value] : []
+  const resolved = typeof value === 'string' ? [value] : [];
+  assert.deepStrictEqual(resolved, []);
+});
+
 // --- Validation errors ---
 
 test("Validation errors are keyed by dot-path matching field keys", () => {

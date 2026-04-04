@@ -17,4 +17,4 @@ Workflow for reviewing inbound PR comments, deciding on fixes, implementing them
 ## Step 3: Respond & Commit
 
 - Reply to **each** PR comment individually via the GitHub MCP tool with an acknowledgement and summary of what changed (or why no change was made).
-- Commit and push to the branch — **only if `pipeline.auto_commit` is enabled in the project's `state.json`**. If not enabled, skip and notify the user.
+- Commit and push to the branch — **only if `pipeline.source_control.auto_commit` is enabled in the project's `state.json`**. If not enabled, skip and notify the user.
