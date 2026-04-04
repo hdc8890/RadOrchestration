@@ -139,6 +139,8 @@ Each planning step runs sequentially in fixed order:
 | 4. Architecture | Architect | `ARCHITECTURE.md` |
 | 5. Master Plan | Architect | `MASTER-PLAN.md` |
 
+Each planning step receives all outputs from preceding steps: the Product Manager reads the Research Findings; the UX Designer reads the PRD; the Architect reads the PRD and Design; and the Master Plan synthesizes all four. This chain ensures every document is grounded in the decisions before it.
+
 After all steps complete, the system transitions to a **human gate** — the Master Plan must be reviewed and approved before execution begins.
 
 ## Execution Pipeline
@@ -206,7 +208,7 @@ Each task progresses through a deterministic lifecycle:
 
 1. **Handoff** — Tactical Planner creates a self-contained Task Handoff document; task `stage` advances to `coding`
 2. **Execution** — Coder implements the task (code + tests only); the `task_completed` event sets `stage → reviewing` while `status` **remains `in_progress`** — the task is not complete yet, it is waiting for review
-3. **Review** — Reviewer evaluates the code against PRD, architecture, and design
+3. **Review** — Reviewer evaluates the code in two passes: conformance against the planning documents (PRD, architecture, design), then an independent assessment of code quality (correctness, security, test coverage, and general best practices)
 4. **Resolution** — Pipeline script processes the `code_review_completed` event: if approved, `status → complete` and `stage → complete`; if `changes_requested` with retries remaining, `status → failed` and `stage → failed` (retries incremented) — the Tactical Planner then creates a corrective task handoff, which resets `status → in_progress` and `stage → coding`; if `changes_requested` with no retries remaining, `status → halted` and `stage → failed`
 
 > **Note:** `complete` is truly terminal for tasks. A task that reaches `status = complete` cannot be retried or failed. The retry path is corrective re-entry: on `changes_requested`, the task transitions to `status = failed`, `stage = failed` (retries incremented); the Tactical Planner then creates a corrective task handoff which resets `status → in_progress`, `stage → coding`, and clears the stale review doc.
