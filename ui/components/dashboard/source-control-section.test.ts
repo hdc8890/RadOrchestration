@@ -33,6 +33,7 @@ interface SourceControlInput {
   auto_pr: string;
   remote_url: string | null;
   compare_url: string | null;
+  pr_url?: string | null;
 }
 
 interface BadgeProps {
@@ -83,6 +84,12 @@ function simulateSourceControlSection(input: SourceControlInput) {
 
   const showsPrPlaceholder = input.auto_pr === 'always';
 
+  // pr_url: undefined = not yet attempted; null = creation failed; string = PR URL
+  const pr_url = input.pr_url;
+  const prLinkHref = pr_url != null && /^https?:\/\//i.test(pr_url) ? pr_url : null;
+  const prState: 'link' | 'failed' | 'pending' =
+    prLinkHref !== null ? 'link' : pr_url === null ? 'failed' : 'pending';
+
   return {
     branchIsLink,
     branchText,
@@ -91,6 +98,8 @@ function simulateSourceControlSection(input: SourceControlInput) {
     autoCommitBadge,
     autoPrBadge,
     showsPrPlaceholder,
+    prLinkHref,
+    prState,
   };
 }
 
@@ -160,6 +169,31 @@ test("PR placeholder row visible when auto_pr is 'always'", () => {
 test("PR placeholder row hidden when auto_pr is 'never'", () => {
   const result = simulateSourceControlSection(makeInput({ auto_pr: 'never' }));
   assert.strictEqual(result.showsPrPlaceholder, false);
+});
+
+test("prState is 'pending' when pr_url is undefined (not yet attempted)", () => {
+  const result = simulateSourceControlSection(makeInput({ auto_pr: 'always' }));
+  assert.strictEqual(result.prState, 'pending');
+  assert.strictEqual(result.prLinkHref, null);
+});
+
+test("prState is 'failed' when pr_url is null (creation failed)", () => {
+  const result = simulateSourceControlSection(makeInput({ auto_pr: 'always', pr_url: null }));
+  assert.strictEqual(result.prState, 'failed');
+  assert.strictEqual(result.prLinkHref, null);
+});
+
+test("prState is 'link' when pr_url is a valid URL", () => {
+  const url = 'https://github.com/org/repo/pull/42';
+  const result = simulateSourceControlSection(makeInput({ auto_pr: 'always', pr_url: url }));
+  assert.strictEqual(result.prState, 'link');
+  assert.strictEqual(result.prLinkHref, url);
+});
+
+test("prState is 'pending' when pr_url is non-http string", () => {
+  const result = simulateSourceControlSection(makeInput({ auto_pr: 'always', pr_url: 'not-a-url' }));
+  assert.strictEqual(result.prState, 'pending');
+  assert.strictEqual(result.prLinkHref, null);
 });
 
 console.log(`\n  ${passed} passed, ${failed} failed\n`);

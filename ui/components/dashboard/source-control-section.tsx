@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Clock, ExternalLink } from "lucide-react";
+import { Github, Clock, ExternalLink, XCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { SpinnerBadge } from "@/components/badges";
 import type { SourceControl } from "@/types/state";
@@ -13,7 +13,7 @@ interface SourceControlSectionProps {
 export function SourceControlSection({ sourceControl }: SourceControlSectionProps) {
   const { branch, auto_commit, auto_pr } = sourceControl;
   const compare_url = sourceControl.compare_url ?? null;
-  const pr_url = sourceControl.pr_url ?? null;
+  const pr_url = sourceControl.pr_url; // preserve undefined (not yet attempted) vs null (creation failed)
 
   return (
     <Card>
@@ -59,7 +59,7 @@ export function SourceControlSection({ sourceControl }: SourceControlSectionProp
 
         {/* PR placeholder row — rendered only when auto_pr === "always" */}
         {auto_pr === 'always' && (
-          pr_url !== null && /^https?:\/\//i.test(pr_url) ? (
+          pr_url != null && /^https?:\/\//i.test(pr_url) ? (
             <div>
               <a
                 href={pr_url}
@@ -71,6 +71,15 @@ export function SourceControlSection({ sourceControl }: SourceControlSectionProp
                 <ExternalLink size={12} aria-hidden="true" />
                 Pull Request
               </a>
+            </div>
+          ) : pr_url === null ? (
+            <div aria-label="Pull request creation failed">
+              <XCircle
+                size={12}
+                className="inline mr-1 text-destructive"
+                aria-hidden="true"
+              />
+              <span className="text-xs text-destructive italic">PR creation failed</span>
             </div>
           ) : (
             <div aria-label="Pull request not yet created">

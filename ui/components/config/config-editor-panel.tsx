@@ -93,7 +93,7 @@ export function ConfigEditorPanel({ editor }: ConfigEditorPanelProps) {
               bannerMessage={
                 editor.formDirtyOnSwitch
                   ? "Form changes serialized to YAML. Comments from the original file are not preserved."
-                  : "Editing raw YAML. No validation is applied \u2014 save writes the content as-is."
+                  : "Editing raw YAML. Minimal validation is applied on save \u2014 YAML must be valid syntax and parse to an object."
               }
             />
           )}

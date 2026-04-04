@@ -111,6 +111,7 @@ export interface Phase {
 
 export interface PhaseDocs {
   phase_plan: string | null;
+  phase_report: string | null;
   phase_review: string | null;
 }
 

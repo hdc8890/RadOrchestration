@@ -64,6 +64,10 @@ export function getOrderedDocs(
       }
     }
 
+    if (phase.docs.phase_report != null) {
+      push(phase.docs.phase_report, `Phase ${n} Report`, 'phase');
+    }
+
     if (phase.docs.phase_review != null) {
       push(phase.docs.phase_review, `Phase ${n} Review`, 'review');
     }
