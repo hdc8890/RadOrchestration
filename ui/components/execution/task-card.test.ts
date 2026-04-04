@@ -1,5 +1,5 @@
 /**
- * Tests for commitUrl sentinel guard in TaskCard.
+ * Tests for commitUrl logic in TaskCard.
  * Run with: npx tsx ui/components/execution/task-card.test.ts
  */
 import assert from "node:assert";
@@ -25,7 +25,7 @@ function computeCommitUrl(
   remoteUrl: string | null | undefined,
   commitHash: string | null | undefined
 ): string | null {
-  return remoteUrl && commitHash && commitHash !== 'none'
+  return remoteUrl && commitHash
     ? `${remoteUrl}/commit/${commitHash}`
     : null;
 }
@@ -34,7 +34,7 @@ const REMOTE = "https://github.com/org/repo";
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-console.log("\ncommitUrl sentinel guard\n");
+console.log("\ncommitUrl logic\n");
 
 test("commit_hash is null → commitUrl is null", () => {
   assert.strictEqual(computeCommitUrl(REMOTE, null), null);
@@ -44,10 +44,6 @@ test("commit_hash is undefined → commitUrl is null", () => {
   assert.strictEqual(computeCommitUrl(REMOTE, undefined), null);
 });
 
-test('commit_hash is "none" → commitUrl is null (sentinel guard)', () => {
-  assert.strictEqual(computeCommitUrl(REMOTE, "none"), null);
-});
-
 test('commit_hash is a real hash → commitUrl is correct GitHub URL', () => {
   assert.strictEqual(
     computeCommitUrl(REMOTE, "abc1234"),
@@ -55,11 +51,11 @@ test('commit_hash is a real hash → commitUrl is correct GitHub URL', () => {
   );
 });
 
-test('sentinel guard is case-sensitive: "None" (capital N) still produces a URL', () => {
-  // "None" is NOT a recognised sentinel — guard must not block it
+test('commit_hash is the string "none" → commitUrl is produced (no sentinel)', () => {
+  // Pipeline never produces 'none' — no sentinel needed; treat as a valid hash
   assert.strictEqual(
-    computeCommitUrl(REMOTE, "None"),
-    `${REMOTE}/commit/None`
+    computeCommitUrl(REMOTE, "none"),
+    `${REMOTE}/commit/none`
   );
 });
 

@@ -18,7 +18,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, taskNumber, maxRetries, onDocClick, remoteUrl = null }: TaskCardProps) {
-  const commitUrl = remoteUrl && task.commit_hash && task.commit_hash !== 'none'
+  const commitUrl = remoteUrl && task.commit_hash
     ? `${remoteUrl}/commit/${task.commit_hash}`
     : null;
 
