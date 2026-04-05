@@ -8,6 +8,7 @@ import {
   renderPartialSuccessSummary,
 } from './summary.js';
 
+
 // --- helpers ---
 
 /** Captures all console.log output during fn(), returns joined string */
@@ -72,42 +73,14 @@ const configPath = '/home/user/my-project/.github/skills/orchestration/config/or
 
 describe('renderPreInstallSummary', () => {
   it('contains "Installation Summary" section header text', () => {
-    const output = capture(() => renderPreInstallSummary(configBase, manifest));
+    const output = capture(() => renderPreInstallSummary(configBase));
     assert.ok(output.includes('Installation Summary'), 'output should contain "Installation Summary"');
   });
 
-  it('contains box-drawing characters', () => {
-    const output = capture(() => renderPreInstallSummary(configBase, manifest));
-    assert.ok(output.includes('┌'), 'output should contain ┌');
-    assert.ok(output.includes('─'), 'output should contain ─');
-    assert.ok(output.includes('┐'), 'output should contain ┐');
-    assert.ok(output.includes('│'), 'output should contain │');
-    assert.ok(output.includes('└'), 'output should contain └');
-    assert.ok(output.includes('┘'), 'output should contain ┘');
-  });
-
   it('contains "Target:" and "Root:" labels', () => {
-    const output = capture(() => renderPreInstallSummary(configBase, manifest));
+    const output = capture(() => renderPreInstallSummary(configBase));
     assert.ok(output.includes('Target:'), 'output should contain "Target:"');
     assert.ok(output.includes('Root:'), 'output should contain "Root:"');
-  });
-
-  it('contains all category names from the manifest', () => {
-    const output = capture(() => renderPreInstallSummary(configBase, manifest));
-    assert.ok(output.includes('Root config'), 'output should include "Root config"');
-    assert.ok(output.includes('Agents'), 'output should include "Agents"');
-    assert.ok(output.includes('Skills'), 'output should include "Skills"');
-  });
-
-  it('with installUi: true includes "UI" row', () => {
-    const output = capture(() => renderPreInstallSummary(configWithUi, manifest));
-    assert.ok(output.includes('UI'), 'output should include "UI" row');
-    assert.ok(output.includes('+ build') || output.includes('build'), 'output should mention build');
-  });
-
-  it('with installUi: false includes "skipped" text', () => {
-    const output = capture(() => renderPreInstallSummary(configBase, manifest));
-    assert.ok(output.includes('skipped'), 'output should include "skipped" for UI row');
   });
 });
 
@@ -130,17 +103,12 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes("What's Next"), 'output should contain "What\'s Next"');
   });
 
-  it('contains validate command path', () => {
+  it('contains getting started guide link', () => {
     const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
     assert.ok(
-      output.includes('validate-orchestration.js'),
-      'output should contain validate command path'
+      output.includes('https://github.com/MetalHexx/RadOrchestation/blob/main/docs/guides.md'),
+      'output should contain getting started guide link'
     );
-  });
-
-  it('contains @orchestrator instruction', () => {
-    const output = capture(() => renderPostInstallSummary(configBase, copyResults, configPath));
-    assert.ok(output.includes('@orchestrator'), 'output should contain @orchestrator');
   });
 
   it('with installUi: true includes "npm start" and "docker compose" commands', () => {
@@ -174,9 +142,9 @@ describe('renderPostInstallSummary', () => {
     assert.ok(output.includes('docker-compose.yml'), 'output should contain "docker-compose.yml"');
   });
 
-  it('with installUi: true output contains step "3."', () => {
+  it('with installUi: true output contains step "2."', () => {
     const output = capture(() => renderPostInstallSummary(configWithUi, copyResults, configPath));
-    assert.ok(output.includes('3.'), 'output should contain step "3."');
+    assert.ok(output.includes('2.'), 'output should contain step "2."');
   });
 });
 
@@ -222,21 +190,17 @@ describe('renderPartialSuccessSummary', () => {
     assert.ok(output.includes("What's Next"), 'output should contain "What\'s Next"');
   });
 
-  it('contains "validate-orchestration.js" command', () => {
+  it('contains getting started guide link', () => {
     const output = capture(() =>
       renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
     );
-    assert.ok(output.includes('validate-orchestration.js'), 'output should contain validate-orchestration.js');
-  });
-
-  it('contains "@orchestrator" instruction', () => {
-    const output = capture(() =>
-      renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
+    assert.ok(
+      output.includes('https://github.com/MetalHexx/RadOrchestation/blob/main/docs/guides.md'),
+      'output should contain getting started guide link'
     );
-    assert.ok(output.includes('@orchestrator'), 'output should contain "@orchestrator"');
   });
 
-  it('step 3 contains "Retry" text', () => {
+  it('step 2 contains "Retry" text', () => {
     const output = capture(() =>
       renderPartialSuccessSummary(configWithUi, copyResults, configPath, errorMsg)
     );
