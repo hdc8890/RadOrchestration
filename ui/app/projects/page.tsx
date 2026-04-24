@@ -114,8 +114,8 @@ export default function ProjectsPage() {
   }, [selectedProject]);
 
   return (
-    <div className="flex h-page flex-col bg-background">
-      <SidebarProvider>
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-background">
+      <SidebarProvider className="min-h-0 flex-1">
         <ProjectSidebar
           projects={projects}
           selectedProject={selectedProject}

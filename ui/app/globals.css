@@ -137,6 +137,10 @@
     --canvas-edge-stroke: var(--color-link);
     --canvas-node-group-bg: color-mix(in oklch, var(--muted) 40%, transparent);
     --canvas-node-group-border: var(--border);
+
+    /* ── Scrollbar Tokens ── */
+    --scrollbar-thumb: oklch(0.55 0 0 / 0.45);
+    --scrollbar-thumb-hover: oklch(0.45 0 0 / 0.7);
   }
 
   .dark {
@@ -219,12 +223,41 @@
     --canvas-edge-stroke: var(--color-link);
     --canvas-node-group-bg: color-mix(in oklch, var(--muted) 40%, transparent);
     --canvas-node-group-border: var(--border);
+
+    /* ── Scrollbar Tokens (dark mode) ── */
+    --scrollbar-thumb: oklch(0.55 0 0 / 0.5);
+    --scrollbar-thumb-hover: oklch(0.75 0 0 / 0.8);
   }
 
   /* ── Focus-visible ring ── */
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+
+  /* ── Sleek, modern scrollbars (Firefox) ── */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  /* ── Sleek, modern scrollbars (WebKit / Chromium) ── */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   * {

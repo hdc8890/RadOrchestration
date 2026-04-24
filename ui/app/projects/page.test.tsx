@@ -48,10 +48,10 @@ async function run() {
     );
   });
 
-  await test('Source contains h-page centering class', () => {
+  await test('Source constrains page height to viewport minus header', () => {
     assert.ok(
-      sourceText.includes('h-page'),
-      'projects/page.tsx must contain the h-page centering class'
+      sourceText.includes('h-[calc(100vh-3.5rem)]'),
+      'projects/page.tsx must size the outer wrapper to `h-[calc(100vh-3.5rem)]` so the viewport never overflows the sticky 56px header'
     );
   });
 
