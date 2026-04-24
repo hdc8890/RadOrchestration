@@ -16,11 +16,12 @@ const NAV_LINKS: NavLink[] = [
 
 interface AppHeaderShellProps {
   children: React.ReactNode;
+  version?: string;
 }
 
 // ─── Inner Component ─────────────────────────────────────────────────────────
 
-function AppHeaderShellInner({ children }: AppHeaderShellProps) {
+function AppHeaderShellInner({ children, version }: AppHeaderShellProps) {
   const { sseStatus, reconnect } = useSSEContext();
   const { onConfigClick } = useConfigClickContext();
 
@@ -31,6 +32,7 @@ function AppHeaderShellInner({ children }: AppHeaderShellProps) {
         onReconnect={reconnect}
         onConfigClick={onConfigClick}
         navLinks={NAV_LINKS}
+        version={version}
       />
       {children}
     </>
@@ -39,11 +41,11 @@ function AppHeaderShellInner({ children }: AppHeaderShellProps) {
 
 // ─── Shell Component ──────────────────────────────────────────────────────────
 
-export function AppHeaderShell({ children }: AppHeaderShellProps) {
+export function AppHeaderShell({ children, version }: AppHeaderShellProps) {
   return (
     <SSEProvider>
       <ConfigClickProvider>
-        <AppHeaderShellInner>{children}</AppHeaderShellInner>
+        <AppHeaderShellInner version={version}>{children}</AppHeaderShellInner>
       </ConfigClickProvider>
     </SSEProvider>
   );

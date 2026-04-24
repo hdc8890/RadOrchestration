@@ -7,7 +7,7 @@ const ReadOnlyCanvas = dynamic(
 );
 
 export const metadata: Metadata = {
-  title: 'Process Editor — Orchestration Monitor',
+  title: 'Process Editor — Rad Orchestration',
 };
 
 export default function ProcessEditorPage() {

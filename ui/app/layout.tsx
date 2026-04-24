@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppHeaderShell } from "@/components/layout";
+import pkg from "../package.json";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -9,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Orchestration Monitor",
+  title: "Rad Orchestration",
   description: "Real-time monitoring dashboard for the orchestration pipeline",
 };
 
@@ -45,7 +46,7 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <AppHeaderShell>
+        <AppHeaderShell version={pkg.version}>
           {children}
         </AppHeaderShell>
       </body>

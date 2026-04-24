@@ -20,9 +20,10 @@ interface AppHeaderProps {
   onReconnect: () => void;
   onConfigClick?: () => void;
   navLinks?: NavLink[];
+  version?: string;
 }
 
-export function AppHeader({ sseStatus, onReconnect, onConfigClick, navLinks = [] }: AppHeaderProps) {
+export function AppHeader({ sseStatus, onReconnect, onConfigClick, navLinks = [], version }: AppHeaderProps) {
   const pathname = usePathname();
   return (
     <header
@@ -30,9 +31,19 @@ export function AppHeader({ sseStatus, onReconnect, onConfigClick, navLinks = []
       className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-card px-4"
     >
       <div className="flex items-center gap-6">
-        <h1 className="text-sm font-semibold tracking-tight">
-          Orchestration Monitor
-        </h1>
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-sm font-semibold tracking-tight">
+            Rad Orchestration
+          </h1>
+          {version && (
+            <span
+              className="text-xs text-muted-foreground/60 font-mono tabular-nums"
+              aria-label={`Version ${version}`}
+            >
+              v{version}
+            </span>
+          )}
+        </div>
 
         <nav aria-label="Main navigation" className="flex items-center gap-1">
           {navLinks.map((link) => {

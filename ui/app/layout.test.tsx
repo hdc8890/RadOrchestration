@@ -54,10 +54,10 @@ async function run() {
     );
   });
 
-  await test('Source text contains <AppHeaderShell> wrapping {children}', () => {
+  await test('Source text contains <AppHeaderShell ...> wrapping {children}', () => {
     assert.ok(
-      source.includes('<AppHeaderShell>'),
-      'layout.tsx must contain <AppHeaderShell>'
+      source.includes('<AppHeaderShell'),
+      'layout.tsx must contain <AppHeaderShell'
     );
     assert.ok(
       source.includes('</AppHeaderShell>'),
@@ -76,14 +76,14 @@ async function run() {
     );
   });
 
-  await test('metadata export exists with title "Orchestration Monitor"', () => {
+  await test('metadata export exists with title "Rad Orchestration"', () => {
     assert.ok(
       source.includes('export const metadata'),
       'layout.tsx must export a metadata constant'
     );
     assert.ok(
-      source.includes('"Orchestration Monitor"') || source.includes("'Orchestration Monitor'"),
-      'metadata.title must equal "Orchestration Monitor"'
+      source.includes('"Rad Orchestration"') || source.includes("'Rad Orchestration'"),
+      'metadata.title must equal "Rad Orchestration"'
     );
   });
 

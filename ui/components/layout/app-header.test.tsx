@@ -65,6 +65,24 @@ function findByAriaLabel(element: unknown, label: string): ReactElementLike | nu
   return null;
 }
 
+function findByAriaLabelPrefix(element: unknown, prefix: string): ReactElementLike | null {
+  if (element === null || element === undefined) return null;
+  if (typeof element !== 'object') return null;
+  const el = element as ReactElementLike;
+  const ariaLabel = el.props?.['aria-label'];
+  if (typeof ariaLabel === 'string' && ariaLabel.startsWith(prefix)) return el;
+  const children = el.props?.children;
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      const found = findByAriaLabelPrefix(child, prefix);
+      if (found) return found;
+    }
+  } else if (children !== null && children !== undefined) {
+    return findByAriaLabelPrefix(children, prefix);
+  }
+  return null;
+}
+
 type NavLinkElement = {
   props?: {
     href?: string;
@@ -202,6 +220,41 @@ async function run() {
     assert.ok(
       sourceText.includes('aria-label="Dashboard controls"'),
       'app-header.tsx must contain aria-label="Dashboard controls"'
+    );
+  });
+
+  await test('version prop renders v{version} text with correct aria-label', () => {
+    const AppHeaderMocked = loadAppHeaderWithMockedNav();
+    const tree = AppHeaderMocked({
+      sseStatus: 'connected',
+      onReconnect: () => {},
+      onConfigClick: () => {},
+      navLinks: [],
+      version: '1.2.3-test',
+    });
+    const versionEl = findByAriaLabel(tree, 'Version 1.2.3-test');
+    assert.notStrictEqual(versionEl, null, 'Expected a span with aria-label="Version 1.2.3-test"');
+    const children = versionEl!.props?.children;
+    const text = Array.isArray(children) ? children.join('') : String(children);
+    assert.strictEqual(text, 'v1.2.3-test', `Expected version text "v1.2.3-test", got "${text}"`);
+  });
+
+  await test('version prop absent — no version span rendered', () => {
+    const AppHeaderMocked = loadAppHeaderWithMockedNav();
+    const tree = AppHeaderMocked({
+      sseStatus: 'connected',
+      onReconnect: () => {},
+      onConfigClick: () => {},
+      navLinks: [],
+    });
+    const versionEl = findByAriaLabelPrefix(tree, 'Version ');
+    assert.strictEqual(versionEl, null, 'Expected no version span when version prop is absent');
+  });
+
+  await test('version span uses muted-foreground/60 class in source', () => {
+    assert.ok(
+      sourceText.includes('text-muted-foreground/60'),
+      'app-header.tsx must style the version span with text-muted-foreground/60'
     );
   });
 
