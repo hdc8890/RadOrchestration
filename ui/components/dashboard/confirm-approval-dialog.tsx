@@ -51,7 +51,7 @@ export function ConfirmApprovalDialog({
           <span className={cn("font-medium text-foreground")}>
             {documentName}
           </span>
-          . This action cannot be undone.
+          . Proceed?
         </DialogDescription>
         <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <Button

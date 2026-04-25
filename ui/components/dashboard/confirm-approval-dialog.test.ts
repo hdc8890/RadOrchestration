@@ -74,7 +74,7 @@ function simulateConfirmApprovalDialog({
       text: documentName,
       className: "font-medium text-foreground",
     },
-    irreversibilityWarning: "This action cannot be undone.",
+    irreversibilityWarning: "Proceed?",
   };
 
   // Cancel button
@@ -141,7 +141,7 @@ test("Props interface accepts all 7 required props", () => {
     onOpenChange: () => {},
     title: "Approve Master Plan",
     documentName: "MASTER-PLAN.md",
-    description: "This will advance the pipeline to execution.",
+    description: "You are approving",
     onConfirm: () => {},
     isPending: false,
   });
@@ -356,7 +356,7 @@ test("Confirm button calls onConfirm when clicked", () => {
   assert.strictEqual(confirmed, true, "onConfirm should have been called");
 });
 
-test("Description includes irreversibility warning text", () => {
+test("Description ends with proceed prompt", () => {
   const result = simulateConfirmApprovalDialog({
     open: true,
     onOpenChange: () => {},
@@ -368,7 +368,7 @@ test("Description includes irreversibility warning text", () => {
   });
   assert.strictEqual(
     result.descriptionElement.irreversibilityWarning,
-    "This action cannot be undone."
+    "Proceed?"
   );
 });
 

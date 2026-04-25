@@ -27,7 +27,7 @@ export function PlanningSection({ planning, projectName, onDocClick }: PlanningS
           <ApproveGateButton
             gateEvent="plan_approved"
             projectName={projectName}
-            documentName={`${projectName}-MASTER-PLAN.md`}
+            documentName={projectName}
             label="Approve Plan"
             className="mt-4 flex justify-end"
           />

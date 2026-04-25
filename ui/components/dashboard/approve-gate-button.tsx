@@ -30,15 +30,13 @@ export interface ApproveGateButtonProps {
 }
 
 const DIALOG_TITLES: Record<GateEvent, string> = {
-  plan_approved: "Approve Master Plan",
+  plan_approved: "Approve Plan",
   final_approved: "Approve Final Review",
 };
 
 const DIALOG_DESCRIPTIONS: Record<GateEvent, string> = {
-  plan_approved:
-    "This will advance the pipeline from planning to execution. You are approving",
-  final_approved:
-    "This will mark the project as complete. You are approving",
+  plan_approved: "You are approving",
+  final_approved: "You are approving",
 };
 
 export const ApproveGateButton = React.forwardRef<

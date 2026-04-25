@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useStartAction } from "@/hooks/use-start-action";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ export const ExecutePlanButton = React.forwardRef<
 >(function ExecutePlanButton({ projectName, className, tabIndex }, ref) {
   const { pendingAction, errorMessage, start } = useStartAction(projectName);
   const isPending = pendingAction === "execute-plan";
+  const [open, setOpen] = useState(false);
 
   return (
     <div className={className}>
@@ -52,7 +54,7 @@ export const ExecutePlanButton = React.forwardRef<
         aria-busy={isPending ? "true" : undefined}
         aria-disabled={isPending ? "true" : undefined}
         tabIndex={tabIndex}
-        onClick={() => { void start("execute-plan"); }}
+        onClick={() => setOpen(true)}
       >
         {isPending ? (
           <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
@@ -61,6 +63,25 @@ export const ExecutePlanButton = React.forwardRef<
         )}
         {computeExecutePlanLabel(isPending)}
       </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogTitle>Execute Plan</DialogTitle>
+          <DialogDescription className="mt-2">
+            This will begin executing the project in a new Claude Code terminal. Proceed?
+          </DialogDescription>
+          <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} autoFocus>
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => { setOpen(false); void start("execute-plan"); }}
+            >
+              Execute Plan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {errorMessage && (
         <p className="mt-2 text-sm text-destructive" role="alert">
           {errorMessage}
