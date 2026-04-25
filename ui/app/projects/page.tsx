@@ -147,7 +147,9 @@ export default function ProjectsPage() {
             <div className="overflow-auto">
               <ProjectHeader
                 projectName={selected.name}
-                schemaVersion="v5"
+                tier={selected.tier}
+                planningStatus={selected.planningStatus}
+                executionStatus={selected.executionStatus}
                 sourceControl={null}
                 followMode={false}
                 onToggleFollowMode={() => {}}
@@ -170,7 +172,9 @@ export default function ProjectsPage() {
             <div className="overflow-auto">
               <ProjectHeader
                 projectName={selected.name}
-                schemaVersion="v5"
+                tier={selected.tier}
+                planningStatus={selected.planningStatus}
+                executionStatus={selected.executionStatus}
                 graphStatus={v5Derivations.graphStatus}
                 gateMode={v5Derivations.gateMode}
                 currentPhaseName={v5Derivations.currentPhaseName}

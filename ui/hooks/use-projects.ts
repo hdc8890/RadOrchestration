@@ -70,7 +70,7 @@ export function useProjects(): UseProjectsReturn {
               v5state.graph.status === 'completed'
                 ? 'complete'
                 : v5state.pipeline.current_tier;
-            const planningStatus = derivePlanningStatus(v5state.graph.nodes);
+            const planningStatus = derivePlanningStatus(v5state.graph.nodes, v5state.graph.status);
             const executionStatus = deriveExecutionStatus(
               v5state.graph.status,
               v5state.graph.nodes,

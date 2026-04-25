@@ -1,31 +1,20 @@
 "use client";
 
 import { Github, Clock, ExternalLink, XCircle } from "lucide-react";
-import { Badge } from '@/components/ui/badge';
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { SpinnerBadge } from "@/components/badges";
-import type { GraphStatus, GateMode, V5SourceControlState, V5AutoCommit, V5AutoPR } from '@/types/state';
-import { NodeStatusBadge } from './node-status-badge';
+import { SpinnerBadge, PipelineTierBadge } from "@/components/badges";
+import type {
+  GraphStatus,
+  GateMode,
+  V5SourceControlState,
+  V5AutoCommit,
+  V5AutoPR,
+  PipelineTier,
+  PlanningStatus,
+  ExecutionStatus,
+} from '@/types/state';
 import { GateModeBadge } from '@/components/badges/gate-mode-badge';
-
-function schemaVersionTooltip(v: 'v4' | 'v5'): string {
-  const n = v === 'v5' ? '5' : '4';
-  return `Pipeline state schema version ${n} (${v}).`;
-}
-
-function statusTooltip(status: GraphStatus): string {
-  switch (status) {
-    case 'not_started':
-      return 'Pipeline has not yet started.';
-    case 'in_progress':
-      return 'Pipeline is currently running.';
-    case 'completed':
-      return 'All phases completed successfully.';
-    case 'halted':
-      return 'Pipeline halted and needs attention.';
-  }
-}
 
 function gateModeTooltip(mode: GateMode | null): string {
   if (mode === null) {
@@ -89,7 +78,9 @@ function followModeTooltip(on: boolean): string {
 
 export interface ProjectHeaderProps {
   projectName: string;
-  schemaVersion: 'v4' | 'v5';
+  tier?: PipelineTier | 'not_initialized';
+  planningStatus?: PlanningStatus;
+  executionStatus?: ExecutionStatus;
   graphStatus?: GraphStatus;
   gateMode?: GateMode | null;
   currentPhaseName?: string | null;
@@ -99,7 +90,7 @@ export interface ProjectHeaderProps {
   onToggleFollowMode: () => void;
 }
 
-export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMode, currentPhaseName, progress, sourceControl, followMode, onToggleFollowMode }: ProjectHeaderProps) {
+export function ProjectHeader({ projectName, tier, planningStatus, executionStatus, graphStatus, gateMode, currentPhaseName, progress, sourceControl, followMode, onToggleFollowMode }: ProjectHeaderProps) {
   const branch = sourceControl?.branch;
   const compare_url = sourceControl?.compare_url ?? null;
   const auto_commit = sourceControl?.auto_commit;
@@ -113,15 +104,12 @@ export function ProjectHeader({ projectName, schemaVersion, graphStatus, gateMod
       <TooltipProvider>
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-lg font-semibold">{projectName}</span>
-          <Tooltip>
-            <TooltipTrigger render={<Badge variant="secondary" className="text-xs">{schemaVersion}</Badge>} />
-            <TooltipContent>{schemaVersionTooltip(schemaVersion)}</TooltipContent>
-          </Tooltip>
-          {graphStatus && (
-            <Tooltip>
-              <TooltipTrigger render={<NodeStatusBadge status={graphStatus} />} />
-              <TooltipContent>{statusTooltip(graphStatus)}</TooltipContent>
-            </Tooltip>
+          {tier && (
+            <PipelineTierBadge
+              tier={tier}
+              planningStatus={planningStatus}
+              executionStatus={executionStatus}
+            />
           )}
           {gateMode !== undefined && (
             <Tooltip>

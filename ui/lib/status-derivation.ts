@@ -7,8 +7,15 @@ import type { NodesRecord, GraphStatus, PlanningStatus, ExecutionStatus } from '
  * scaffolded from full.yml has no `requirements` node, and a new project from
  * default.yml has no `research`/`prd`/`design`/`architecture`. A step that
  * isn't scaffolded must not block overall planning completion.
+ *
+ * When `graphStatus === 'in_progress'` and planning isn't fully complete,
+ * planning is treated as in-progress even if no individual planning step is
+ * currently `in_progress` (e.g. paused at a gate between steps).
  */
-export function derivePlanningStatus(nodes: NodesRecord): PlanningStatus {
+export function derivePlanningStatus(
+  nodes: NodesRecord,
+  graphStatus?: GraphStatus,
+): PlanningStatus {
   const presentSteps = PLANNING_STEP_ORDER.filter((key) => nodes[key] !== undefined);
   if (presentSteps.length === 0) return 'not_started';
   const statuses = presentSteps.map((key) => nodes[key].status);
@@ -19,8 +26,10 @@ export function derivePlanningStatus(nodes: NodesRecord): PlanningStatus {
   if (statuses.some((s) => s === 'in_progress')) {
     return 'in_progress';
   }
+  if (graphStatus === 'in_progress') {
+    return 'in_progress';
+  }
   // All other statuses (failed, halted, skipped, not_started) fall through to not_started.
-  // This is intentional: the sidebar badge only distinguishes not-started / in-progress / complete.
   return 'not_started';
 }
 

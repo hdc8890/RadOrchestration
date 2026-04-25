@@ -78,16 +78,15 @@ function simulateProjectHeader(props: SimulateProjectHeaderProps) {
   };
   return {
     projectName: props.projectName,
-    schemaVersionText: props.schemaVersion,
-    badgeVariant: "secondary" as const,
-    badgeClass: "text-xs",
     outerElement: "header",
     outerClass: "border-b border-border px-6 py-4",
     ariaLabel: `Project ${props.projectName}`,
     row1Class: "flex flex-wrap items-center gap-3",
     nameClass: "text-lg font-semibold",
-    showGraphStatusBadge: !!props.graphStatus,
-    graphStatus: props.graphStatus,
+    showTierBadge: !!props.tier,
+    tier: props.tier,
+    planningStatus: props.planningStatus,
+    executionStatus: props.executionStatus,
     showGateModeBadge: props.gateMode !== undefined,
     gateMode: props.gateMode,
     showRow2,
@@ -107,81 +106,84 @@ function simulateProjectHeader(props: SimulateProjectHeaderProps) {
 console.log("\nProjectHeader logic tests\n");
 
 test("renders the project name", () => {
-  const result = simulateProjectHeader({ projectName: "MY-PROJECT", schemaVersion: "v5", sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "MY-PROJECT", sourceControl: null });
   assert.strictEqual(result.projectName, "MY-PROJECT");
 });
 
-test('renders schema version "v4" in badge', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v4", sourceControl: null });
-  assert.strictEqual(result.schemaVersionText, "v4");
-});
-
-test('renders schema version "v5" in badge', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
-  assert.strictEqual(result.schemaVersionText, "v5");
-});
-
-test('uses "secondary" Badge variant for schema version', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
-  assert.strictEqual(result.badgeVariant, "secondary");
-});
-
 test('renders project name with "text-lg font-semibold" class', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "Test", sourceControl: null });
   assert.ok(result.nameClass.includes("text-lg"), 'should include "text-lg"');
   assert.ok(result.nameClass.includes("font-semibold"), 'should include "font-semibold"');
 });
 
 test('outer element is <header> with aria-label', () => {
-  const result = simulateProjectHeader({ projectName: "MyProj", schemaVersion: "v5", sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "MyProj", sourceControl: null });
   assert.strictEqual(result.outerElement, "header");
   assert.strictEqual(result.ariaLabel, "Project MyProj");
 });
 
 test('outer class includes border-b', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "Test", sourceControl: null });
   assert.ok(result.outerClass.includes("border-b"), 'should include "border-b"');
 });
 
 test('row 1 has flex flex-wrap items-center gap-3 (unified wrapping row)', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "Test", sourceControl: null });
   assert.ok(result.row1Class.includes("flex"), 'row1 should include "flex"');
   assert.ok(result.row1Class.includes("flex-wrap"), 'row1 should include "flex-wrap"');
   assert.ok(result.row1Class.includes("items-center"), 'row1 should include "items-center"');
   assert.ok(result.row1Class.includes("gap-3"), 'row1 should include "gap-3"');
 });
 
-test('NodeStatusBadge renders in row 1 when graphStatus is provided', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", graphStatus: "in_progress", sourceControl: null });
-  assert.strictEqual(result.showGraphStatusBadge, true);
-  assert.strictEqual(result.graphStatus, "in_progress");
+test('PipelineTierBadge renders when tier is provided (planning, in_progress)', () => {
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    tier: "planning",
+    planningStatus: "in_progress",
+    sourceControl: null,
+  });
+  assert.strictEqual(result.showTierBadge, true);
+  assert.strictEqual(result.tier, "planning");
+  assert.strictEqual(result.planningStatus, "in_progress");
 });
 
-test('NodeStatusBadge does not render when graphStatus is omitted', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
-  assert.strictEqual(result.showGraphStatusBadge, false);
+test('PipelineTierBadge renders when tier is provided (execution, in_progress)', () => {
+  const result = simulateProjectHeader({
+    projectName: "Test",
+    tier: "execution",
+    executionStatus: "in_progress",
+    sourceControl: null,
+  });
+  assert.strictEqual(result.showTierBadge, true);
+  assert.strictEqual(result.tier, "execution");
+  assert.strictEqual(result.executionStatus, "in_progress");
+});
+
+test('PipelineTierBadge does not render when tier is omitted', () => {
+  const result = simulateProjectHeader({ projectName: "Test", sourceControl: null });
+  assert.strictEqual(result.showTierBadge, false);
 });
 
 test('GateModeBadge renders when gateMode is provided (string)', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", gateMode: "task", sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "Test", gateMode: "task", sourceControl: null });
   assert.strictEqual(result.showGateModeBadge, true);
   assert.strictEqual(result.gateMode, "task");
 });
 
 test('GateModeBadge renders when gateMode is null (explicit null)', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", gateMode: null, sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "Test", gateMode: null, sourceControl: null });
   assert.strictEqual(result.showGateModeBadge, true);
   assert.strictEqual(result.gateMode, null);
 });
 
 test('GateModeBadge does not render when gateMode is undefined (v4 path)', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v4", sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "Test", sourceControl: null });
   assert.strictEqual(result.showGateModeBadge, false);
 });
 
 test('Row 2 renders when graphStatus === "in_progress" AND currentPhaseName is truthy', () => {
   const result = simulateProjectHeader({
-    projectName: "Test", schemaVersion: "v5",
+    projectName: "Test",
     graphStatus: "in_progress", currentPhaseName: "Phase 1",
     sourceControl: null,
   });
@@ -191,7 +193,7 @@ test('Row 2 renders when graphStatus === "in_progress" AND currentPhaseName is t
 
 test('Row 2 is hidden when graphStatus !== "in_progress"', () => {
   const result = simulateProjectHeader({
-    projectName: "Test", schemaVersion: "v5",
+    projectName: "Test",
     graphStatus: "completed", currentPhaseName: "Phase 1",
     sourceControl: null,
   });
@@ -200,7 +202,7 @@ test('Row 2 is hidden when graphStatus !== "in_progress"', () => {
 
 test('Row 2 is hidden when graphStatus is "not_started"', () => {
   const result = simulateProjectHeader({
-    projectName: "Test", schemaVersion: "v5",
+    projectName: "Test",
     graphStatus: "not_started", currentPhaseName: "Phase 1",
     sourceControl: null,
   });
@@ -209,7 +211,7 @@ test('Row 2 is hidden when graphStatus is "not_started"', () => {
 
 test('Row 2 is hidden when currentPhaseName is null', () => {
   const result = simulateProjectHeader({
-    projectName: "Test", schemaVersion: "v5",
+    projectName: "Test",
     graphStatus: "in_progress", currentPhaseName: null,
     sourceControl: null,
   });
@@ -218,7 +220,7 @@ test('Row 2 is hidden when currentPhaseName is null', () => {
 
 test('Row 2 is hidden when currentPhaseName is undefined', () => {
   const result = simulateProjectHeader({
-    projectName: "Test", schemaVersion: "v5",
+    projectName: "Test",
     graphStatus: "in_progress",
     sourceControl: null,
   });
@@ -227,7 +229,7 @@ test('Row 2 is hidden when currentPhaseName is undefined', () => {
 
 test('Progress text renders as "{completed} of {total} phases" when progress is provided with row 2 conditions', () => {
   const result = simulateProjectHeader({
-    projectName: "Test", schemaVersion: "v5",
+    projectName: "Test",
     graphStatus: "in_progress", currentPhaseName: "Phase 2",
     progress: { completed: 3, total: 5 },
     sourceControl: null,
@@ -239,7 +241,7 @@ test('Progress text renders as "{completed} of {total} phases" when progress is 
 
 test('Progress text is hidden when progress is null even if row 2 is visible', () => {
   const result = simulateProjectHeader({
-    projectName: "Test", schemaVersion: "v5",
+    projectName: "Test",
     graphStatus: "in_progress", currentPhaseName: "Phase 1",
     progress: null,
     sourceControl: null,
@@ -250,7 +252,7 @@ test('Progress text is hidden when progress is null even if row 2 is visible', (
 
 test('Progress text is hidden when progress is undefined', () => {
   const result = simulateProjectHeader({
-    projectName: "Test", schemaVersion: "v5",
+    projectName: "Test",
     graphStatus: "in_progress", currentPhaseName: "Phase 1",
     sourceControl: null,
   });
@@ -258,26 +260,24 @@ test('Progress text is hidden when progress is undefined', () => {
   assert.strictEqual(result.showProgress, false);
 });
 
-test('v4 rendering: only projectName and schemaVersion — no badges, no row 2', () => {
-  const result = simulateProjectHeader({ projectName: "LEGACY", schemaVersion: "v4", sourceControl: null });
-  assert.strictEqual(result.showGraphStatusBadge, false);
+test('header without tier or gateMode renders only projectName — no tier badge, no gate badge, no row 2', () => {
+  const result = simulateProjectHeader({ projectName: "LEGACY", sourceControl: null });
+  assert.strictEqual(result.showTierBadge, false);
   assert.strictEqual(result.showGateModeBadge, false);
   assert.strictEqual(result.showRow2, false);
   assert.strictEqual(result.projectName, "LEGACY");
-  assert.strictEqual(result.schemaVersionText, "v4");
 });
 
 // ─── Inlined source-control fragment visibility ──────────────────────────────
 
 test('inlined source-control fragments are hidden when sourceControl is null', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "Test", sourceControl: null });
   assert.strictEqual(result.showInlinedSourceControl, false);
 });
 
 test('inlined source-control fragments render when a non-null V5SourceControlState fixture is passed', () => {
   const result = simulateProjectHeader({
     projectName: "Test",
-    schemaVersion: "v5",
     sourceControl: makeSourceControl(),
   });
   assert.strictEqual(result.showInlinedSourceControl, true);
@@ -286,7 +286,7 @@ test('inlined source-control fragments render when a non-null V5SourceControlSta
 // ─── Follow Mode populated container ─────────────────────────────────────────
 
 test('Follow Mode container uses ml-auto and inline-flex gap-2 classes', () => {
-  const result = simulateProjectHeader({ projectName: "Test", schemaVersion: "v5", sourceControl: null });
+  const result = simulateProjectHeader({ projectName: "Test", sourceControl: null });
   assert.ok(result.followModeContainerClass.includes("ml-auto"), 'container should include "ml-auto"');
   assert.ok(result.followModeContainerClass.includes("inline-flex"), 'container should include "inline-flex"');
   assert.ok(result.followModeContainerClass.includes("gap-2"), 'container should include "gap-2"');
@@ -297,7 +297,6 @@ test('Follow Mode container uses ml-auto and inline-flex gap-2 classes', () => {
 test('Follow Mode label text is exactly "Follow Mode" when followMode is true', () => {
   const result = simulateProjectHeader({
     projectName: "Test",
-    schemaVersion: "v5",
     sourceControl: null,
     followMode: true,
     onToggleFollowMode: () => {},
@@ -308,7 +307,6 @@ test('Follow Mode label text is exactly "Follow Mode" when followMode is true', 
 test('Follow Mode label text is exactly "Follow Mode" when followMode is false', () => {
   const result = simulateProjectHeader({
     projectName: "Test",
-    schemaVersion: "v5",
     sourceControl: null,
     followMode: false,
     onToggleFollowMode: () => {},
@@ -319,7 +317,6 @@ test('Follow Mode label text is exactly "Follow Mode" when followMode is false',
 test("Follow Mode label htmlFor matches the Switch id (\"follow-mode-switch\")", () => {
   const result = simulateProjectHeader({
     projectName: "Test",
-    schemaVersion: "v5",
     sourceControl: null,
     followMode: false,
     onToggleFollowMode: () => {},
@@ -332,7 +329,6 @@ test("Follow Mode label htmlFor matches the Switch id (\"follow-mode-switch\")",
 test("Follow Mode Switch carries className \"cursor-pointer\"", () => {
   const result = simulateProjectHeader({
     projectName: "Test",
-    schemaVersion: "v5",
     sourceControl: null,
     followMode: false,
     onToggleFollowMode: () => {},
@@ -343,7 +339,6 @@ test("Follow Mode Switch carries className \"cursor-pointer\"", () => {
 test("Follow Mode Switch checked === true when followMode is true", () => {
   const result = simulateProjectHeader({
     projectName: "Test",
-    schemaVersion: "v5",
     sourceControl: null,
     followMode: true,
     onToggleFollowMode: () => {},
@@ -354,7 +349,6 @@ test("Follow Mode Switch checked === true when followMode is true", () => {
 test("Follow Mode Switch checked === false when followMode is false", () => {
   const result = simulateProjectHeader({
     projectName: "Test",
-    schemaVersion: "v5",
     sourceControl: null,
     followMode: false,
     onToggleFollowMode: () => {},
@@ -371,7 +365,6 @@ test("Invoking onCheckedChange(true) calls onToggleFollowMode exactly once and d
   };
   const result = simulateProjectHeader({
     projectName: "Test",
-    schemaVersion: "v5",
     sourceControl: null,
     followMode: false,
     onToggleFollowMode: handler as () => void,
@@ -394,7 +387,6 @@ test("Invoking onCheckedChange(false) calls onToggleFollowMode exactly once and 
   };
   const result = simulateProjectHeader({
     projectName: "Test",
-    schemaVersion: "v5",
     sourceControl: null,
     followMode: true,
     onToggleFollowMode: handler as () => void,
@@ -410,39 +402,24 @@ test("Invoking onCheckedChange(false) calls onToggleFollowMode exactly once and 
 
 // ─── Tooltip copy strings ────────────────────────────────────────────────────
 
-test('schema-version tooltip helper is present in source', () => {
+test('schema-version pill is removed from source (no schemaVersionTooltip helper)', () => {
   assert.ok(
-    headerSource.includes('schemaVersionTooltip') ||
-    headerSource.includes("Pipeline state schema version 5 (v5)."),
-    'schemaVersionTooltip function or v5 tooltip string missing from project-header.tsx',
+    !headerSource.includes('schemaVersionTooltip'),
+    'schemaVersionTooltip helper should be removed from project-header.tsx',
   );
 });
 
-test('statusTooltip "not_started" copy appears verbatim in source', () => {
+test('graph-status NodeStatusBadge is removed from source (no statusTooltip helper)', () => {
   assert.ok(
-    headerSource.includes("Pipeline has not yet started."),
-    'status not_started tooltip string missing from project-header.tsx',
+    !headerSource.includes('statusTooltip'),
+    'statusTooltip helper should be removed from project-header.tsx',
   );
 });
 
-test('statusTooltip "in_progress" copy appears verbatim in source', () => {
+test('PipelineTierBadge is rendered in source', () => {
   assert.ok(
-    headerSource.includes("Pipeline is currently running."),
-    'status in_progress tooltip string missing from project-header.tsx',
-  );
-});
-
-test('statusTooltip "completed" copy appears verbatim in source', () => {
-  assert.ok(
-    headerSource.includes("All phases completed successfully."),
-    'status completed tooltip string missing from project-header.tsx',
-  );
-});
-
-test('statusTooltip "halted" copy appears verbatim in source', () => {
-  assert.ok(
-    headerSource.includes("Pipeline halted and needs attention."),
-    'status halted tooltip string missing from project-header.tsx',
+    headerSource.includes('<PipelineTierBadge'),
+    'PipelineTierBadge JSX should be present in project-header.tsx',
   );
 });
 
@@ -628,10 +605,8 @@ test('no attribute-bearing <TooltipProvider ...> tag exists in source', () => {
 
 // ─── Tooltip wrapping count ──────────────────────────────────────────────────
 
-test('exactly eleven <TooltipContent> opening tags exist in source', () => {
+test('exactly nine <TooltipContent> opening tags exist in source', () => {
   // Breakdown:
-  //   schema-version badge     → 1
-  //   status badge             → 1
   //   gate-mode badge          → 1
   //   branch link arm          → 1
   //   branch fallback span     → 1
@@ -641,12 +616,12 @@ test('exactly eleven <TooltipContent> opening tags exist in source', () => {
   //   Auto-Commit SpinnerBadge → 1
   //   Auto-PR SpinnerBadge     → 1
   //   follow-mode Switch       → 1
-  //   ──────────────────────── 11
+  //   ──────────────────────── 9
   const matches = headerSource.match(/<TooltipContent>/g) ?? [];
   assert.strictEqual(
     matches.length,
-    11,
-    `expected exactly 11 <TooltipContent> opening tags; found ${matches.length}`,
+    9,
+    `expected exactly 9 <TooltipContent> opening tags; found ${matches.length}`,
   );
 });
 

@@ -150,7 +150,7 @@ export async function discoverProjects(
               hasState: true,
               hasMalformedState: false,
               brainstormingDoc: hasBrainstorming ? brainstormingFile : null,
-              planningStatus: derivePlanningStatus(state.graph.nodes),
+              planningStatus: derivePlanningStatus(state.graph.nodes, state.graph.status),
               executionStatus: deriveExecutionStatus(state.graph.status, state.graph.nodes),
               lastUpdated: state.project?.updated,
               schemaVersion: 'v5',

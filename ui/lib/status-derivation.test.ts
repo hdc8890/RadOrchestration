@@ -69,7 +69,7 @@ test('returns complete when all five are completed and non-planning nodes exist 
   assert.strictEqual(derivePlanningStatus(nodes), 'complete');
 });
 
-test('returns not_started for mixed not_started/completed without in_progress', () => {
+test('returns not_started for mixed not_started/completed without graphStatus arg (backward compat)', () => {
   const nodes: NodesRecord = {
     research: makeStepNode('completed'),
     prd: makeStepNode('not_started'),
@@ -78,6 +78,38 @@ test('returns not_started for mixed not_started/completed without in_progress', 
     master_plan: makeStepNode('not_started'),
   };
   assert.strictEqual(derivePlanningStatus(nodes), 'not_started');
+});
+
+test('returns not_started for mixed not_started/completed when graphStatus=not_started', () => {
+  const nodes: NodesRecord = {
+    research: makeStepNode('completed'),
+    prd: makeStepNode('not_started'),
+    design: makeStepNode('completed'),
+    architecture: makeStepNode('not_started'),
+    master_plan: makeStepNode('not_started'),
+  };
+  assert.strictEqual(derivePlanningStatus(nodes, 'not_started'), 'not_started');
+});
+
+test('returns in_progress for mixed not_started/completed when graphStatus=in_progress (TEST-PLANS scenario)', () => {
+  const nodes: NodesRecord = {
+    research: makeStepNode('completed'),
+    prd: makeStepNode('not_started'),
+    design: makeStepNode('completed'),
+    architecture: makeStepNode('not_started'),
+    master_plan: makeStepNode('not_started'),
+  };
+  assert.strictEqual(derivePlanningStatus(nodes, 'in_progress'), 'in_progress');
+});
+
+test('returns in_progress when all nodes are not_started but graphStatus=in_progress (fresh-start)', () => {
+  const nodes = makePlanningNodes('not_started');
+  assert.strictEqual(derivePlanningStatus(nodes, 'in_progress'), 'in_progress');
+});
+
+test('returns complete when all nodes completed even if graphStatus=in_progress (complete short-circuits)', () => {
+  const nodes = makePlanningNodes('completed');
+  assert.strictEqual(derivePlanningStatus(nodes, 'in_progress'), 'complete');
 });
 
 test('returns not_started when a planning node has failed status (intentional fall-through)', () => {
