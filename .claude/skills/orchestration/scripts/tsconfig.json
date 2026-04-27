@@ -11,7 +11,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "composite": false
+    "composite": false,
+    "resolveJsonModule": true
   },
   "include": ["lib/**/*.ts", "tests/**/*.ts", "*.ts"]
 }

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node build.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.19.17",
+    "esbuild": "^0.25.0",
     "typescript": "^5.0.0",
     "vitest": "^3.0.0"
   }

@@ -170,7 +170,7 @@ mock.method(fs, 'mkdirSync', mkdirSyncMock);
 
 // ── Single import of index.js (uses live bindings above) ─────────────────────
 
-const { main, installScriptsDeps } = await import('./index.js');
+const { main } = await import('./index.js');
 
 // ── Reset helper ──────────────────────────────────────────────────────────────
 
@@ -856,107 +856,4 @@ test('runWizard receives cliOverrides from parseArgs options', async () => {
   const wizardArgs = runWizardMock.mock.calls[0].arguments[0];
   assert.equal(wizardArgs.skipConfirmation, true, 'skipConfirmation passed');
   assert.deepEqual(wizardArgs.cliOverrides, { skipConfirmation: true, orchRoot: '.rad' }, 'cliOverrides passed');
-});
-
-// ── installScriptsDeps — unit tests ──────────────────────────────────────────
-
-test('installScriptsDeps success: spawn exits 0, spinner.succeed called, returns { success: true }', async () => {
-  resetMocks();
-  state.spawnExitCode = 0;
-
-  const result = await installScriptsDeps('/test/scripts');
-
-  assert.deepEqual(result, { success: true }, 'returns { success: true }');
-  assert.equal(spawnMock.mock.callCount(), 1, 'spawn called once');
-  assert.equal(spawnMock.mock.calls[0].arguments[0], 'npm install --omit=dev', 'spawn command correct');
-  assert.deepEqual(spawnMock.mock.calls[0].arguments[1], { cwd: '/test/scripts', stdio: 'pipe', shell: true }, 'spawn options correct');
-  const spinner = spinnerInstances[0];
-  assert.equal(spinner.succeed.mock.callCount(), 1, 'spinner.succeed called');
-  assert.equal(spinner.succeed.mock.calls[0].arguments[0], 'Pipeline engine dependencies installed', 'succeed message correct');
-  assert.equal(spinner.fail.mock.callCount(), 0, 'spinner.fail not called');
-});
-
-test('installScriptsDeps failure: spawn exits 1, spinner.fail called, returns { success: false, error }', async () => {
-  resetMocks();
-  state.spawnExitCode = 1;
-
-  const result = await installScriptsDeps('/test/scripts');
-
-  assert.equal(result.success, false, 'returns success: false');
-  assert.ok('error' in result, 'result has error property');
-  const spinner = spinnerInstances[0];
-  assert.equal(spinner.fail.mock.callCount(), 1, 'spinner.fail called');
-  assert.equal(spinner.fail.mock.calls[0].arguments[0], 'Pipeline engine dependencies: npm install failed', 'fail message correct');
-  assert.equal(spinner.succeed.mock.callCount(), 0, 'spinner.succeed not called');
-});
-
-test('installScriptsDeps error event: spinner.fail called, returns { success: false, error }', async () => {
-  resetMocks();
-  state.spawnError = new Error('spawn ENOENT');
-
-  const result = await installScriptsDeps('/test/scripts');
-
-  assert.equal(result.success, false, 'returns success: false on error event');
-  assert.equal(result.error, 'spawn ENOENT', 'error message from thrown error');
-  const spinner = spinnerInstances[0];
-  assert.equal(spinner.fail.mock.callCount(), 1, 'spinner.fail called on error event');
-});
-
-test('installScriptsDeps: spawn called with shell: true and stdio: pipe', async () => {
-  resetMocks();
-  state.spawnExitCode = 0;
-
-  await installScriptsDeps('/some/path');
-
-  const opts = spawnMock.mock.calls[0].arguments[1];
-  assert.equal(opts.shell, true, 'shell: true');
-  assert.equal(opts.stdio, 'pipe', 'stdio: pipe');
-});
-
-// ── installScriptsDeps — integration tests ────────────────────────────────────
-
-test('main() calls installScriptsDeps: spawn invoked with cwd ending in skills/orchestration/scripts', async () => {
-  resetMocks();
-  state.spawnExitCode = 0;
-
-  const originalArgv = process.argv;
-  process.argv = ['node', 'installer/index.js', '--yes'];
-  try {
-    await main();
-  } finally {
-    process.argv = originalArgv;
-  }
-
-  assert.ok(spawnMock.mock.callCount() >= 1, 'spawn called at least once');
-  const spawnCall = spawnMock.mock.calls.find((c) =>
-    c.arguments[0] === 'npm install --omit=dev'
-  );
-  assert.ok(spawnCall, 'spawn called with npm install --omit=dev');
-  const cwd = spawnCall.arguments[1].cwd;
-  assert.ok(
-    String(cwd).replace(/\\/g, '/').endsWith('skills/orchestration/scripts'),
-    `spawn cwd ends with skills/orchestration/scripts, got: ${cwd}`
-  );
-});
-
-test('main() continues to renderPostInstallSummary when installScriptsDeps fails (non-fatal)', async () => {
-  resetMocks();
-  state.spawnExitCode = 1;
-
-  const originalArgv = process.argv;
-  process.argv = ['node', 'installer/index.js', '--yes'];
-  try {
-    await main();
-  } finally {
-    process.argv = originalArgv;
-  }
-
-  assert.equal(renderPostInstallSummaryMock.mock.callCount(), 1, 'renderPostInstallSummary called despite spawn failure');
-  const failSpinner = spinnerInstances.find((s) => s.fail.mock.callCount() > 0);
-  assert.ok(failSpinner, 'a spinner.fail was called');
-  assert.equal(
-    failSpinner.fail.mock.calls[0].arguments[0],
-    'Pipeline engine dependencies: npm install failed',
-    'fail message correct'
-  );
 });
