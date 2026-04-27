@@ -1,0 +1,65 @@
+name: Rebuild pipeline bundle
+
+# Triggers whenever TypeScript source, schemas, or build config in scripts/ change on main.
+# Rebuilds pipeline.bundle.js, runs the test suite, then commits the updated artifact
+# back to the branch so the repo always ships a ready-to-run bundle.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.claude/skills/orchestration/scripts/main.ts'
+      - '.claude/skills/orchestration/scripts/lib/**'
+      - '.claude/skills/orchestration/schemas/**'
+      - '.claude/skills/orchestration/scripts/build.js'
+      - '.claude/skills/orchestration/scripts/package.json'
+      - '.claude/skills/orchestration/scripts/tsconfig.json'
+
+concurrency:
+  group: bundle-freshness
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        working-directory: .claude/skills/orchestration/scripts
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: .claude/skills/orchestration/scripts/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild bundle
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Commit updated bundle if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pipeline.bundle.js
+          if git diff --staged --quiet; then
+            echo "Bundle unchanged — nothing to commit"
+          else
+            git commit -m "ci: rebuild pipeline.bundle.js [skip ci]"
+            git push
+          fi
+        working-directory: .claude/skills/orchestration/scripts
