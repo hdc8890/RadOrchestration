@@ -1,12 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { NodesRecord, NodeState, NodeStatus } from '@/types/state';
 import { DAGNodeRow } from './dag-node-row';
 import { DAGLoopNode } from './dag-loop-node';
-import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP } from './dag-timeline-helpers';
+import { isLoopNode, groupNodesBySection, NODE_SECTION_MAP, shouldRenderTimelineRow, buildIterationItemValue } from './dag-timeline-helpers';
+import type { CompatibleNodeState } from './dag-timeline-helpers';
 import { DAGSectionGroup } from './dag-section-group';
-import { Separator } from '@/components/ui/separator';
 
 interface DAGTimelineProps {
   nodes: NodesRecord;
@@ -21,6 +21,9 @@ interface DAGTimelineProps {
   projectName: string;
   /** Top-level phase_loop.status for FR-2 Execute Plan visibility (AD-2). */
   phaseLoopStatus?: NodeStatus;
+  /** PR URL from state.pipeline.source_control.pr_url; surfaced on the
+   *  `final_pr` row only (Completion section). */
+  prUrl?: string | null;
 }
 
 /**
@@ -43,7 +46,61 @@ export function deriveAncestorLoopKeys(lostKey: string): string[] {
   return result.reverse();
 }
 
-export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName, phaseLoopStatus }: DAGTimelineProps) {
+/**
+ * Translates one (loopParentId, iterationIndex) pair into the iteration
+ * accordion's `data-row-key` (iter-...). Used by the focus-fallback
+ * useEffect to map each `loopParentId` returned by `deriveAncestorLoopKeys`
+ * into the accordion key the iteration panel actually stamps onto its
+ * trigger (AD-3 — single shared key shape). Delegates to the canonical
+ * `buildIterationItemValue` builder so the encoding stays in one place.
+ */
+export function iterationAncestorToAccordionKey(loopParentId: string, iterationIndex: number): string {
+  return buildIterationItemValue(loopParentId, iterationIndex);
+}
+
+/**
+ * Returns the deepest-first list of accordion `data-row-key` values to try
+ * when focus has been lost to body after the row that owned `focusedRowKey`
+ * was unmounted (typically because an ancestor accordion collapsed).
+ *
+ * `focusedRowKey` arrives in three shapes:
+ *   - compound nodeId: `phase_loop.iter0.task_handoff` — walk every
+ *     `.iterN.` boundary into an iteration trigger key.
+ *   - iteration trigger key: `iter-${parentNodeId}-${iterIndex}` — walk
+ *     `parentNodeId`'s own `.iterN.` boundaries (the trigger itself is
+ *     gone, so we want its enclosing iteration if any).
+ *   - corrective trigger key: `ct-${parentIterationKey}-${ctIndex}` —
+ *     fall back directly to `parentIterationKey`, then recurse upward.
+ */
+export function deriveAccordionFallbackKeys(focusedRowKey: string): string[] {
+  if (focusedRowKey.startsWith('ct-')) {
+    const lastDash = focusedRowKey.lastIndexOf('-');
+    if (lastDash <= 2) return [];
+    const parentIterationKey = focusedRowKey.slice(3, lastDash);
+    return [parentIterationKey, ...deriveAccordionFallbackKeys(parentIterationKey)];
+  }
+  if (focusedRowKey.startsWith('iter-')) {
+    const lastDash = focusedRowKey.lastIndexOf('-');
+    if (lastDash <= 4) return [];
+    const parentNodeId = focusedRowKey.slice(5, lastDash);
+    return derivePrefixAccordionKeys(parentNodeId + '.');
+  }
+  return derivePrefixAccordionKeys(focusedRowKey);
+}
+
+function derivePrefixAccordionKeys(compoundKey: string): string[] {
+  const result: string[] = [];
+  const regex = /\.iter(\d+)\./g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(compoundKey)) !== null) {
+    const loopParentId = compoundKey.slice(0, match.index);
+    const iterIndex = Number.parseInt(match[1], 10);
+    result.push(buildIterationItemValue(loopParentId, iterIndex));
+  }
+  return result.reverse();
+}
+
+export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopIds, onAccordionChange, repoBaseUrl, projectName, phaseLoopStatus, prUrl }: DAGTimelineProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const groups = groupNodesBySection(nodes);
   const unmatchedEntries = Object.entries(nodes).filter(([nodeId]) => !Object.hasOwn(NODE_SECTION_MAP, nodeId));
@@ -135,14 +192,18 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
     if (typeof document === 'undefined') return;
     if (document.activeElement !== document.body) return;
     if (focusedRowKey === null) return;
-
     const container = containerRef.current;
     if (container === null) return;
 
-    const ancestorKeys = deriveAncestorLoopKeys(focusedRowKey);
-    for (const ancestorKey of ancestorKeys) {
+    // Walk deepest-first up the chain of accordion ancestors that could
+    // still be in the DOM after a collapse. `deriveAccordionFallbackKeys`
+    // handles all three shapes the focused row key can take: compound
+    // nodeIds (e.g. `phase_loop.iter0.task_loop.iter2.task_handoff`),
+    // iteration trigger keys (`iter-*`), and corrective trigger keys
+    // (`ct-*`).
+    for (const accordionKey of deriveAccordionFallbackKeys(focusedRowKey)) {
       const target = container.querySelector<HTMLElement>(
-        `[data-row-key="${CSS.escape(ancestorKey)}"]`
+        `[data-row-key="${CSS.escape(accordionKey)}"]`
       );
       if (target !== null) {
         target.focus();
@@ -177,6 +238,7 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
           isFocused={focusedRowKey === nodeId}
           onFocusChange={handleFocusChange}
           phaseLoopStatus={phaseLoopStatus}
+          prUrl={prUrl}
         />
       )}
     </div>
@@ -188,18 +250,18 @@ export function DAGTimeline({ nodes, currentNodePath, onDocClick, expandedLoopId
       role="listbox"
       aria-label="Pipeline timeline"
       onKeyDownCapture={handleKeyDown}
-      className="flex flex-col gap-0"
+      className="flex flex-col gap-3"
     >
-      {groups.map((group, index) => (
-        <Fragment key={group.label}>
-          {index > 0 && <Separator className="my-3" role="none" />}
-          <DAGSectionGroup label={group.label}>
-            {group.entries.map(renderNodeEntry)}
-          </DAGSectionGroup>
-        </Fragment>
+      {groups.map((group) => (
+        <DAGSectionGroup key={group.label} label={group.label}>
+          {group.entries
+            .filter(([nodeId, node]) => shouldRenderTimelineRow(nodeId, node as CompatibleNodeState, { commitHash: null, prUrl: prUrl ?? null }))
+            .map(renderNodeEntry)}
+        </DAGSectionGroup>
       ))}
-      {groups.length > 0 && unmatchedEntries.length > 0 && <Separator className="my-3" role="none" />}
-      {unmatchedEntries.map(renderNodeEntry)}
+      {unmatchedEntries
+        .filter(([nodeId, node]) => shouldRenderTimelineRow(nodeId, node as CompatibleNodeState, { commitHash: null, prUrl: prUrl ?? null }))
+        .map(renderNodeEntry)}
     </div>
   );
 }

@@ -1,11 +1,15 @@
 "use client";
 
+import { useCallback } from 'react';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { DAGNodeRow } from './dag-node-row';
-import { NodeStatusBadge } from './node-status-badge';
 import { DAGCorrectiveTaskGroup } from './dag-corrective-task-group';
 import { DAGLoopNode } from './dag-loop-node';
 import { DocumentLink, ExternalLink } from '@/components/documents';
-import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath } from './dag-timeline-helpers';
+import { ProgressBar } from '@/components/execution/progress-bar';
+import { NodeStatusBadge } from './node-status-badge';
+import { getCommitLinkData, isLoopNode, parsePhaseNameFromDocPath, parseTaskNameFromDocPath, buildIterationItemValue, deriveIterationTaskProgress, deriveIterationBadgeLabel, shouldRenderTimelineRow } from './dag-timeline-helpers';
+import type { CompatibleNodeState } from './dag-timeline-helpers';
 import type { IterationEntry } from '@/types/state';
 
 interface DAGIterationPanelProps {
@@ -79,120 +83,274 @@ export function DAGIterationPanel({
     iterationName = parseTaskNameFromDocPath(docPath, iterationIndex);
   }
 
+  // Shared roving-tabindex wiring (FR-16, AD-5)
+  const itemValue = buildIterationItemValue(parentNodeId, iterationIndex);
+  const isFocused = focusedRowKey === itemValue;
+  const handleFocus = useCallback(() => {
+    onFocusChange(itemValue);
+  }, [itemValue, onFocusChange]);
+
   // Compute card container classes
   let cardClasses: string;
 
   if (parentKind === 'for_each_phase') {
     switch (iteration.status) {
       case 'in_progress':
-        cardClasses = 'border border-[var(--color-link)] bg-card rounded-md p-3 mb-2';
+        cardClasses = 'border border-[var(--color-link)] bg-card rounded-md mb-2';
         break;
       case 'completed':
-        cardClasses = 'border border-border bg-muted/50 rounded-md p-3 mb-2';
+        cardClasses = 'border border-border bg-muted/50 rounded-md mb-2';
         break;
       case 'failed':
       case 'halted':
-        cardClasses = 'border border-[var(--status-failed)] bg-card rounded-md p-3 mb-2';
+        cardClasses = 'border border-[var(--status-failed)] bg-card rounded-md mb-2';
         break;
       default:
-        cardClasses = 'border border-border bg-card rounded-md p-3 mb-2';
+        cardClasses = 'border border-border bg-card rounded-md mb-2';
     }
   } else {
     switch (iteration.status) {
       case 'in_progress':
-        cardClasses = 'border border-border/70 bg-card rounded-md p-2 mb-1.5';
+        cardClasses = 'border border-border/70 bg-card rounded-md mb-1.5';
         break;
       case 'completed':
-        cardClasses = 'border border-border/50 bg-muted/30 rounded-md p-2 mb-1.5';
+        cardClasses = 'border border-border/50 bg-muted/30 rounded-md mb-1.5';
         break;
       case 'failed':
       case 'halted':
-        cardClasses = 'border border-[var(--status-failed)] bg-card rounded-md p-2 mb-1.5';
+        cardClasses = 'border border-[var(--status-failed)] bg-card rounded-md mb-1.5';
         break;
       default:
-        cardClasses = 'border border-border/40 bg-card rounded-md p-2 mb-1.5';
+        cardClasses = 'border border-border/40 bg-card rounded-md mb-1.5';
     }
   }
 
-  const ariaLabel = parentKind === 'for_each_phase'
-    ? `Phase iteration ${iterationIndex + 1} \u2014 ${iterationName} \u2014 ${iteration.status}`
-    : `Task iteration ${iterationIndex + 1} \u2014 ${iterationName} \u2014 ${iteration.status}`;
+  if (parentKind === 'for_each_phase') {
+    const progress = deriveIterationTaskProgress(iteration);
+    const derivedBadge = deriveIterationBadgeLabel(iteration);
+    const headerAriaLabel = `Phase iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
+    const hasPhasePlan = iteration.doc_path != null && iteration.doc_path !== '';
+    return (
+      <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
+        <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)} className={cardClasses}>
+          <div className="relative flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
+            <div className="flex-1 flex items-center gap-2 min-w-0 [&>h3]:flex-1 [&>h3]:min-w-0">
+              <AccordionTrigger
+                role="option"
+                aria-selected={false}
+                aria-label={headerAriaLabel}
+                className="hover:no-underline gap-2 items-center py-2 px-3 border-0 w-full"
+                data-timeline-row
+                data-row-key={itemValue}
+                tabIndex={isFocused ? 0 : -1}
+                onFocus={handleFocus}
+              >
+                <NodeStatusBadge
+                  status={derivedBadge.status}
+                  label={derivedBadge.label}
+                  iconOnly={iteration.status === 'completed'}
+                />
+                <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
+                  {iterationName}
+                </span>
+                {progress !== null && (
+                  <div className="flex-1 min-w-24">
+                    <ProgressBar
+                      completed={progress.completed}
+                      total={progress.total}
+                      showCount={progress.total > 0}
+                    />
+                  </div>
+                )}
+                {/* Invisible placeholder reserves layout space for the absolute-positioned Phase Plan link below; chevron auto-renders next via shadcn's ml-auto on data-slot=accordion-trigger-icon. The pl-3 widens the reserved area so the visible Phase Plan link doesn't crowd the ProgressBar's "N/N tasks" label. */}
+                {hasPhasePlan && (
+                  <span aria-hidden="true" className="invisible inline-flex items-center gap-1.5 pl-3 text-sm shrink-0">
+                    <span className="inline-block h-3.5 w-3.5" />
+                    <span>Phase Plan</span>
+                  </span>
+                )}
+              </AccordionTrigger>
+            </div>
+            {hasPhasePlan && (
+              <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10">
+                <DocumentLink path={iteration.doc_path!} label="Phase Plan" onDocClick={onDocClick} />
+              </div>
+            )}
+          </div>
+          <AccordionContent>
+            <div className="border-l border-border pl-3 ml-3">
+              {/* Body: task iteration list (phase_review verdict now rendered inline on its row, see DD-11/FR-16) */}
+              {Object.entries(iteration.nodes).filter(([childNodeId, childNode]) =>
+                shouldRenderTimelineRow(childNodeId, childNode as CompatibleNodeState, { commitHash: iteration.commit_hash ?? null, prUrl: null })
+              ).map(([childNodeId, childNode]) => {
+                const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
+                return isLoopNode(childNode) ? (
+                  <DAGLoopNode
+                    key={childNodeId}
+                    nodeId={childKey}
+                    node={childNode}
+                    currentNodePath={currentNodePath}
+                    onDocClick={onDocClick}
+                    expandedLoopIds={expandedLoopIds}
+                    onAccordionChange={onAccordionChange}
+                    repoBaseUrl={repoBaseUrl}
+                    projectName={projectName}
+                    focusedRowKey={focusedRowKey}
+                    isFocused={focusedRowKey === childKey}
+                    onFocusChange={onFocusChange}
+                  />
+                ) : (
+                  <DAGNodeRow
+                    key={childNodeId}
+                    nodeId={childKey}
+                    node={childNode}
+                    depth={ITERATION_CHILD_DEPTH}
+                    currentNodePath={currentNodePath}
+                    onDocClick={onDocClick}
+                    isFocused={focusedRowKey === childKey}
+                    onFocusChange={onFocusChange}
+                  />
+                );
+              })}
+              <DAGCorrectiveTaskGroup
+                correctiveTasks={iteration.corrective_tasks}
+                parentIterationKey={itemValue}
+                parentNodeId={correctiveGroupParentId}
+                currentNodePath={currentNodePath}
+                onDocClick={onDocClick}
+                repoBaseUrl={repoBaseUrl}
+                focusedRowKey={focusedRowKey}
+                onFocusChange={onFocusChange}
+                expandedLoopIds={expandedLoopIds}
+                onAccordionChange={onAccordionChange}
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    );
+  }
 
-  const headerClass = parentKind === 'for_each_phase'
-    ? 'py-1 flex items-center gap-2 mb-1.5'
-    : 'py-1 flex items-center gap-2 mb-1';
-
+  // for_each_task branch (FR-5, FR-9)
+  const derivedBadge = deriveIterationBadgeLabel(iteration);
+  const headerAriaLabel = `Task iteration ${iterationIndex + 1} — ${iterationName} — ${derivedBadge.label}`;
+  const hasTaskHandoff = iteration.doc_path != null && iteration.doc_path !== '';
+  const hasCommitLink = commitData !== null && iteration.commit_hash != null;
+  const hasAnyTaskTrailing = hasTaskHandoff || hasCommitLink;
   return (
-    <div className={cardClasses} aria-label={ariaLabel}>
-      <div className={headerClass}>
-        <span className={isFallback ? 'text-sm italic text-muted-foreground truncate max-w-[60%] min-w-0' : 'text-sm font-medium truncate max-w-[60%] min-w-0'}>
-          {iterationName}
-        </span>
-        <NodeStatusBadge status={iteration.status} />
-        {iteration.doc_path != null && iteration.doc_path !== '' && (
-          // Gate on iteration.doc_path (new shape) only — NOT on the combined `docPath` that
-          // includes the legacy `phase_planning` / `task_handoff` fallback. Legacy projects
-          // already render a Doc button on those synthetic child rows via DAGNodeRow; adding
-          // a second one here would duplicate the link on every pre-unify completed project.
-          <DocumentLink path={iteration.doc_path} label="Doc" onDocClick={onDocClick} />
-        )}
-        {commitData !== null && (
-          commitData.href !== null ? (
-            // No tabIndex override: this header <div> has no row-level focus
-            // wiring (unlike DAGNodeRow, which owns a roving tabindex + keydown
-            // handler), so keyboard users must reach the commit link via
-            // natural tab order. Same rationale as DocumentLink above.
-            <ExternalLink
-              href={commitData.href}
-              label={commitData.label}
-              icon="external-link"
-            />
-          ) : (
-            <span className="text-xs font-mono text-muted-foreground">
-              {commitData.label}
-            </span>
-          )
-        )}
-      </div>
-      {Object.entries(iteration.nodes).map(([childNodeId, childNode]) => {
-        const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
-        return isLoopNode(childNode) ? (
-          <DAGLoopNode
-            key={childNodeId}
-            nodeId={childKey}
-            node={childNode}
+    <Accordion multiple value={expandedLoopIds} onValueChange={onAccordionChange}>
+      <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)} className={cardClasses}>
+        <div className="relative flex items-center gap-2 rounded-md hover:bg-accent/50 pr-3">
+          <div className="flex-1 flex items-center gap-2 min-w-0 [&>h3]:flex-1 [&>h3]:min-w-0">
+            <AccordionTrigger
+              role="option"
+              aria-selected={false}
+              aria-label={headerAriaLabel}
+              className="hover:no-underline gap-2 items-center py-2 px-3 border-0 w-full"
+              data-timeline-row
+              data-row-key={itemValue}
+              tabIndex={isFocused ? 0 : -1}
+              onFocus={handleFocus}
+            >
+              <NodeStatusBadge
+                status={derivedBadge.status}
+                label={derivedBadge.label}
+                iconOnly={iteration.status === 'completed'}
+              />
+              <span className={isFallback ? 'text-sm italic text-muted-foreground truncate min-w-0' : 'text-sm font-medium truncate min-w-0'}>
+                {iterationName}
+              </span>
+              {/* Invisible placeholder reserves layout space for the absolute-positioned Task Handoff + Commit links below; pl-3 keeps the visible links from crowding the iteration name when it's long. */}
+              {hasAnyTaskTrailing && (
+                <span aria-hidden="true" className="invisible ml-auto inline-flex items-center gap-2 pl-3 text-sm shrink-0">
+                  {hasTaskHandoff && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-block h-3.5 w-3.5" />
+                      <span>Task Handoff</span>
+                    </span>
+                  )}
+                  {hasCommitLink && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-block h-3.5 w-3.5" />
+                      <span>{commitData!.label}</span>
+                    </span>
+                  )}
+                </span>
+              )}
+            </AccordionTrigger>
+          </div>
+          {hasAnyTaskTrailing && (
+            <div className="absolute right-12 top-1/2 -translate-y-1/2 z-10 flex items-center gap-2">
+              {hasTaskHandoff && (
+                <DocumentLink path={iteration.doc_path!} label="Task Handoff" onDocClick={onDocClick} />
+              )}
+              {hasCommitLink && (
+                commitData!.href !== null ? (
+                  <ExternalLink
+                    href={commitData!.href}
+                    label="Commit"
+                    icon="github"
+                    title={iteration.commit_hash!}
+                  />
+                ) : (
+                  <span
+                    className="text-xs font-mono text-muted-foreground"
+                    title={iteration.commit_hash!}
+                  >
+                    {commitData!.label}
+                  </span>
+                )
+              )}
+            </div>
+          )}
+        </div>
+        <AccordionContent>
+          {Object.entries(iteration.nodes).filter(([childNodeId, childNode]) =>
+            shouldRenderTimelineRow(childNodeId, childNode as CompatibleNodeState, { commitHash: iteration.commit_hash ?? null, prUrl: null })
+          ).map(([childNodeId, childNode]) => {
+            const childKey = buildIterationChildNodeId(parentNodeId, iterationIndex, childNodeId);
+            return isLoopNode(childNode) ? (
+              <DAGLoopNode
+                key={childNodeId}
+                nodeId={childKey}
+                node={childNode}
+                currentNodePath={currentNodePath}
+                onDocClick={onDocClick}
+                expandedLoopIds={expandedLoopIds}
+                onAccordionChange={onAccordionChange}
+                repoBaseUrl={repoBaseUrl}
+                projectName={projectName}
+                focusedRowKey={focusedRowKey}
+                isFocused={focusedRowKey === childKey}
+                onFocusChange={onFocusChange}
+              />
+            ) : (
+              <DAGNodeRow
+                key={childNodeId}
+                nodeId={childKey}
+                node={childNode}
+                depth={ITERATION_CHILD_DEPTH}
+                currentNodePath={currentNodePath}
+                onDocClick={onDocClick}
+                isFocused={focusedRowKey === childKey}
+                onFocusChange={onFocusChange}
+              />
+            );
+          })}
+          <DAGCorrectiveTaskGroup
+            correctiveTasks={iteration.corrective_tasks}
+            parentIterationKey={itemValue}
+            parentNodeId={correctiveGroupParentId}
             currentNodePath={currentNodePath}
             onDocClick={onDocClick}
+            repoBaseUrl={repoBaseUrl}
+            focusedRowKey={focusedRowKey}
+            onFocusChange={onFocusChange}
             expandedLoopIds={expandedLoopIds}
             onAccordionChange={onAccordionChange}
-            repoBaseUrl={repoBaseUrl}
-            projectName={projectName}
-            focusedRowKey={focusedRowKey}
-            isFocused={focusedRowKey === childKey}
-            onFocusChange={onFocusChange}
           />
-        ) : (
-          <DAGNodeRow
-            key={childNodeId}
-            nodeId={childKey}
-            node={childNode}
-            depth={ITERATION_CHILD_DEPTH}
-            currentNodePath={currentNodePath}
-            onDocClick={onDocClick}
-            isFocused={focusedRowKey === childKey}
-            onFocusChange={onFocusChange}
-          />
-        );
-      })}
-      <DAGCorrectiveTaskGroup
-        correctiveTasks={iteration.corrective_tasks}
-        parentNodeId={correctiveGroupParentId}
-        currentNodePath={currentNodePath}
-        onDocClick={onDocClick}
-        repoBaseUrl={repoBaseUrl}
-        focusedRowKey={focusedRowKey}
-        onFocusChange={onFocusChange}
-      />
-    </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }

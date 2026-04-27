@@ -422,17 +422,18 @@ test('dag-iteration-panel.tsx forwards iteration.corrective_tasks to DAGCorrecti
   // The corrective_tasks forwarding must NOT be inside a parentKind conditional block
   // (i.e., it appears once unconditionally for both for_each_phase and for_each_task).
   //
-  // Robust check: (1) <DAGCorrectiveTaskGroup occurs exactly once in the file — a
-  // branched-by-parentKind rendering would produce TWO invocations (one per branch).
+  // Robust check: (1) <DAGCorrectiveTaskGroup occurs at least once in the file. The
+  // P02-T01-C1 corrective restored a SECOND call site in the for_each_task fallthrough
+  // branch — the new "exactly two" test is the canonical invariant. This pre-existing
+  // test now flexes to >= 1 to permit both per-branch invocations.
   // (2) No gating pattern appears anywhere before the forwarding line — regardless
   // of distance — scanning the full file up to the forwarding point rather than a
   // fixed window. This catches gating nested several blocks up (e.g. an IIFE or
   // helper that wraps the JSX later in a refactor).
   const invocationMatches = iterationPanelSource.match(/<DAGCorrectiveTaskGroup\b/g) ?? [];
-  assert.strictEqual(
-    invocationMatches.length,
-    1,
-    `<DAGCorrectiveTaskGroup must appear exactly once in dag-iteration-panel.tsx (a per-parentKind branch would have two); found ${invocationMatches.length}`
+  assert.ok(
+    invocationMatches.length >= 1,
+    `<DAGCorrectiveTaskGroup must appear at least once in dag-iteration-panel.tsx; found ${invocationMatches.length}`
   );
   const lines = iterationPanelSource.split(/\r?\n/);
   const forwardingLine = lines.findIndex((l) => l.includes('correctiveTasks={iteration.corrective_tasks}'));
@@ -460,7 +461,7 @@ test('dag-iteration-panel.tsx imports DocumentLink from @/components/documents',
   );
 });
 
-test('dag-iteration-panel.tsx renders a <DocumentLink path={iteration.doc_path} label="Doc" onDocClick={onDocClick} /> — new-shape only', () => {
+test('dag-iteration-panel.tsx renders <DocumentLink path={iteration.doc_path}> with typed labels (Phase Plan / Task Handoff) onDocClick={onDocClick} /> — new-shape only (FR-11)', () => {
   // Iterations lost their synthetic phase_planning / task_handoff child step nodes in the
   // explode-scaffold-unify refactor. Those children used to own the Doc button via DAGNodeRow.
   // Post-unify, the iteration panel itself must render the Doc button off iteration.doc_path.
@@ -474,12 +475,12 @@ test('dag-iteration-panel.tsx renders a <DocumentLink path={iteration.doc_path} 
     'iteration panel must render <DocumentLink> for the iteration\'s doc link'
   );
   assert.ok(
-    /<DocumentLink\s+path=\{iteration\.doc_path\}/.test(iterationPanelSource),
-    '<DocumentLink> path prop must be iteration.doc_path (new-shape only), NOT the combined docPath — otherwise legacy projects show a duplicate Doc button on top of the one DAGNodeRow already renders for the phase_planning / task_handoff child row'
+    /<DocumentLink\s+path=\{iteration\.doc_path!?\}/.test(iterationPanelSource),
+    '<DocumentLink> path prop must be iteration.doc_path (new-shape only), NOT the combined docPath — otherwise legacy projects show a duplicate Doc button on top of the one DAGNodeRow already renders for the phase_planning / task_handoff child row. (Trailing `!` non-null assertion accepted when callsite is gated on a hasPhasePlan/hasTaskHandoff boolean derived from iteration.doc_path.)'
   );
   assert.ok(
-    /<DocumentLink[^/]*label="Doc"/.test(iterationPanelSource),
-    '<DocumentLink> label prop must be "Doc" to match DAGNodeRow idiom'
+    /<DocumentLink[^/]*label="Phase Plan|Task Handoff"/.test(iterationPanelSource),
+    '<DocumentLink> label prop must be typed by parent kind: "Phase Plan" for phase iterations, "Task Handoff" for task iterations (FR-11)'
   );
   assert.ok(
     /<DocumentLink[^/]*onDocClick=\{onDocClick\}/.test(iterationPanelSource),
@@ -492,15 +493,13 @@ test('dag-iteration-panel.tsx gates <DocumentLink> on iteration.doc_path (new sh
   // fallback path already has a Doc button on the phase_planning / task_handoff child row.
   // Double-rendering would ship two buttons that open the same document on every legacy project.
   // The gate uses `iteration.doc_path != null && iteration.doc_path !== ''` to mirror the
-  // existing DAGNodeRow:80 pattern (`node.doc_path != null && node.doc_path !== ''`).
-  const lines = iterationPanelSource.split(/\r?\n/);
-  const docLinkLineIdx = lines.findIndex((l) => l.includes('<DocumentLink'));
-  assert.ok(docLinkLineIdx > 0, 'DocumentLink line must exist');
-  // Scan the preceding 6 lines for the gate expression (headroom for the explanatory comment).
-  const precedingWindow = lines.slice(Math.max(0, docLinkLineIdx - 6), docLinkLineIdx).join('\n');
+  // existing DAGNodeRow:80 pattern (`node.doc_path != null && node.doc_path !== ''`). The
+  // gate may be hoisted into a boolean (`hasPhasePlan` / `hasTaskHandoff` /
+  // `hasAnyTaskTrailing`) and reused at the JSX site — accept either inline or hoisted form.
   assert.ok(
-    /iteration\.doc_path\s*!=\s*null/.test(precedingWindow),
-    'DocumentLink must be gated on `iteration.doc_path != null` (new shape only, not the legacy-fallback-inclusive `docPath` variable)'
+    /(hasPhasePlan|hasTaskHandoff|hasAnyTaskTrailing)\s*=\s*iteration\.doc_path\s*!=\s*null/.test(iterationPanelSource)
+      || /iteration\.doc_path\s*!=\s*null\s*&&\s*iteration\.doc_path\s*!==\s*''/.test(iterationPanelSource),
+    'DocumentLink must be gated on `iteration.doc_path != null && iteration.doc_path !== \'\'` (new shape only, not the legacy-fallback-inclusive `docPath` variable). Gate may be hoisted into a hasPhasePlan/hasTaskHandoff/hasAnyTaskTrailing boolean.'
   );
 });
 
@@ -549,7 +548,374 @@ test('dag-corrective-task-group.tsx does NOT contain projectName= or gateActive=
   );
 });
 
+console.log("\nDAGIterationPanel — phase iteration accordion (P02-T01)\n");
+
+test('dag-iteration-panel.tsx imports Accordion/AccordionItem/AccordionTrigger/AccordionContent from @/components/ui/accordion (AD-2)', () => {
+  assert.ok(
+    /import\s+\{[^}]*Accordion[^}]*AccordionItem[^}]*AccordionTrigger[^}]*AccordionContent[^}]*\}\s+from\s+['"]@\/components\/ui\/accordion['"]/.test(iterationPanelSource)
+    || (
+      /import\s+\{[^}]*Accordion\b/.test(iterationPanelSource)
+      && /AccordionItem/.test(iterationPanelSource)
+      && /AccordionTrigger/.test(iterationPanelSource)
+      && /AccordionContent/.test(iterationPanelSource)
+    ),
+    'iteration panel must import the accordion primitives so the panel itself becomes the accordion (AD-2)'
+  );
+});
+
+test('dag-iteration-panel.tsx wires <Accordion ... value={expandedLoopIds} onValueChange={onAccordionChange} multiple> at the top of the for_each_phase branch (AD-2, AD-3)', () => {
+  assert.ok(
+    /<Accordion\b[^>]*\bmultiple\b[^>]*value=\{expandedLoopIds\}[^>]*onValueChange=\{onAccordionChange\}/.test(iterationPanelSource)
+    || /<Accordion\b[^>]*value=\{expandedLoopIds\}[^>]*onValueChange=\{onAccordionChange\}[^>]*\bmultiple\b/.test(iterationPanelSource),
+    '<Accordion> in iteration panel must be controlled (value={expandedLoopIds}, onValueChange={onAccordionChange}) and multi-open (matches the controlled-mode contract documented in AD-3)'
+  );
+});
+
+test('dag-iteration-panel.tsx <AccordionItem value> uses buildIterationItemValue(parentNodeId, iterationIndex) (AD-3 hook+renderer parity)', () => {
+  assert.ok(
+    /<AccordionItem\b[^>]*value=\{buildIterationItemValue\(parentNodeId,\s*iterationIndex\)\}/.test(iterationPanelSource),
+    '<AccordionItem value> must come from buildIterationItemValue so the same key shape is produced by both the hook and the renderer (AD-3)'
+  );
+});
+
+test('dag-iteration-panel.tsx renders NodeStatusBadge with iconOnly for the phase-iteration small status icon (DD-1)', () => {
+  assert.ok(
+    /NodeStatusBadge[\s\S]{0,200}iconOnly/.test(iterationPanelSource),
+    'phase iteration header must use NodeStatusBadge with iconOnly wired to iteration.status === "completed" for the small status icon (DD-1)'
+  );
+});
+
+test('dag-iteration-panel.tsx imports ProgressBar from @/components/execution/progress-bar (NFR-5)', () => {
+  assert.ok(
+    /import\s+\{\s*ProgressBar\s*\}\s+from\s+['"]@\/components\/execution\/progress-bar['"]/.test(iterationPanelSource),
+    'iteration panel must reuse the existing ProgressBar primitive — no new package, no new shared utility (NFR-5)'
+  );
+});
+
+test('dag-iteration-panel.tsx renders ProgressBar inside the for_each_phase accordion trigger (FR-7, FR-8)', () => {
+  assert.ok(
+    /<ProgressBar\b/.test(iterationPanelSource),
+    'iteration panel must render <ProgressBar> in the phase-iteration header so progress ticks per task (FR-7) and the empty 0% track shows for not_started phases (FR-8)'
+  );
+});
+
+test('dag-iteration-panel.tsx Phase Plan DocumentLink is a SIBLING of AccordionTrigger (not nested inside it) — DD-6 + nested-interactive-control invariant', () => {
+  // The DocumentLink line for Phase Plan must NOT live within the
+  // <AccordionTrigger>...</AccordionTrigger> span. Mirrors the
+  // dag-corrective-task-group.tsx pattern.
+  const triggerOpenIdx = iterationPanelSource.indexOf('<AccordionTrigger');
+  const triggerCloseIdx = iterationPanelSource.indexOf('</AccordionTrigger>');
+  assert.ok(triggerOpenIdx > -1 && triggerCloseIdx > triggerOpenIdx, 'panel must contain a <AccordionTrigger>...</AccordionTrigger> pair');
+  const triggerInner = iterationPanelSource.slice(triggerOpenIdx, triggerCloseIdx);
+  assert.ok(
+    !/<DocumentLink\b/.test(triggerInner),
+    'Phase Plan <DocumentLink> must render as a sibling of <AccordionTrigger>, not inside it (nested interactive control would break click + ARIA — see dag-corrective-task-group.tsx pattern)'
+  );
+});
+
+test('dag-iteration-panel.tsx renders <DAGCorrectiveTaskGroup> in BOTH the for_each_phase accordion body AND the for_each_task fallthrough (FR-3, FR-4, NFR-1)', () => {
+  const src = readFileSync(
+    join(__dirname, 'dag-iteration-panel.tsx'),
+    'utf-8'
+  );
+  // exactly two <DAGCorrectiveTaskGroup ...> JSX call sites
+  const matches = src.match(/<DAGCorrectiveTaskGroup\b/g) ?? [];
+  assert.strictEqual(
+    matches.length,
+    2,
+    'expected exactly two <DAGCorrectiveTaskGroup> JSX usages — one per branch'
+  );
+});
+
+test('dag-iteration-panel.tsx passes showCount={...} to <ProgressBar> so 0/0 tasks is suppressed (DD-3, FR-8)', () => {
+  const src = readFileSync(
+    join(__dirname, 'dag-iteration-panel.tsx'),
+    'utf-8'
+  );
+  assert.match(
+    src,
+    /<ProgressBar[\s\S]*?showCount=\{[^}]+\}/,
+    '<ProgressBar> in dag-iteration-panel.tsx must receive a showCount prop'
+  );
+});
+
+test('progress-bar.tsx accepts a showCount prop and suppresses the count span when showCount is false (DD-3)', () => {
+  const src = readFileSync(
+    join(__dirname, '..', '..', 'components', 'execution', 'progress-bar.tsx'),
+    'utf-8'
+  );
+  // showCount is part of the props interface
+  assert.match(
+    src,
+    /showCount\??:\s*boolean/,
+    'ProgressBarProps must declare a showCount?: boolean field'
+  );
+  // showCount guards the rendering of the {completed}/{total} tasks span
+  assert.match(
+    src,
+    /showCount\s*&&[\s\S]*?\{completed\}\/\{total\}\s*tasks/,
+    'progress-bar.tsx must gate the {completed}/{total} tasks span on showCount'
+  );
+});
+
+test('dag-iteration-panel.tsx ariaLabel ternary does NOT carry a "Phase iteration" branch (dead-code prune)', () => {
+  const src = readFileSync(
+    join(__dirname, 'dag-iteration-panel.tsx'),
+    'utf-8'
+  );
+  // there must be at most one occurrence of "Phase iteration ${"
+  // — namely headerAriaLabel — and zero in the ariaLabel ternary
+  const phaseIterPattern = /["`'\s]Phase iteration\s+\$\{/g;
+  const hits = src.match(phaseIterPattern) ?? [];
+  assert.ok(
+    hits.length <= 1,
+    `expected at most 1 "Phase iteration \${...}" template hit (headerAriaLabel) — found ${hits.length}; the dead ariaLabel branch was not pruned`
+  );
+});
+
+console.log("\nDAGIterationPanel — task iteration accordion (P02-T02)\n");
+
+test('dag-iteration-panel.tsx for_each_task branch wraps the task iteration in <AccordionItem value={buildIterationItemValue(parentNodeId, iterationIndex)}> (AD-2, AD-3)', () => {
+  // The file now contains TWO AccordionItem invocations (one per parentKind branch).
+  // Both must use buildIterationItemValue for the value prop so the hook + renderer
+  // identity contract holds for tasks too (AD-3).
+  const matches = iterationPanelSource.match(/value=\{buildIterationItemValue\(parentNodeId,\s*iterationIndex\)\}/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `for_each_task branch must also use buildIterationItemValue for its <AccordionItem value> — found ${matches.length} occurrence(s), expected ≥ 2`
+  );
+});
+
+test('dag-iteration-panel.tsx for_each_task branch does NOT render <ProgressBar> (FR-9 — task iterations have no progress bar)', () => {
+  // ProgressBar is imported and used by the for_each_phase branch only. The for_each_task
+  // branch must not introduce a second usage.
+  const matches = iterationPanelSource.match(/<ProgressBar\b/g) ?? [];
+  assert.strictEqual(
+    matches.length,
+    1,
+    `<ProgressBar> must appear exactly once in dag-iteration-panel.tsx (in the for_each_phase branch only); found ${matches.length} occurrence(s) — task iterations have no progress bar (FR-9)`
+  );
+});
+
+test('dag-iteration-panel.tsx for_each_task branch renders NodeStatusBadge in its header (DD-1)', () => {
+  // After P02-T02, NodeStatusBadge replaces renderStatusIcon. There must be ≥ 2
+  // call sites (one per parentKind branch).
+  const matches = iterationPanelSource.match(/<NodeStatusBadge/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `<NodeStatusBadge> must be rendered in BOTH parentKind branches — found ${matches.length} occurrence(s), expected ≥ 2 (DD-1)`
+  );
+});
+
+test('dag-iteration-panel.tsx for_each_task branch keeps Doc / commit links as SIBLINGS of AccordionTrigger (DD-1, no nested interactive controls)', () => {
+  // After P02-T02, both <AccordionTrigger> blocks in the file must contain NO
+  // <DocumentLink or <ExternalLink usage. The links live in sibling rows.
+  const triggerBlocks = [...iterationPanelSource.matchAll(/<AccordionTrigger[\s\S]*?<\/AccordionTrigger>/g)];
+  assert.ok(triggerBlocks.length >= 2, `expected ≥ 2 <AccordionTrigger>...</AccordionTrigger> blocks (one per parentKind branch); found ${triggerBlocks.length}`);
+  for (const m of triggerBlocks) {
+    assert.ok(!/<DocumentLink\b/.test(m[0]), 'no <DocumentLink> may live inside an <AccordionTrigger> (nested interactive control)');
+    assert.ok(!/<ExternalLink\b/.test(m[0]), 'no <ExternalLink> may live inside an <AccordionTrigger> (nested interactive control)');
+  }
+});
+
 // ─── Summary ─────────────────────────────────────────────────────────────────
+
+console.log("\nDAGIterationPanel — roving-tabindex parity (P02-T03)\n");
+
+test('dag-iteration-panel.tsx wires tabIndex={isFocused ? 0 : -1} on EVERY <AccordionTrigger> (FR-16, AD-5)', () => {
+  const triggerBlocks = [...iterationPanelSource.matchAll(/<AccordionTrigger[\s\S]*?>/g)];
+  assert.ok(triggerBlocks.length >= 2, 'expected ≥ 2 <AccordionTrigger ...> opening tags');
+  for (const m of triggerBlocks) {
+    assert.ok(
+      /tabIndex=\{isFocused \? 0 : -1\}/.test(m[0]),
+      `every <AccordionTrigger> must wire tabIndex={isFocused ? 0 : -1}; missing on tag: ${m[0].slice(0, 120)}...`
+    );
+  }
+});
+
+test('dag-iteration-panel.tsx wires onFocus={handleFocus} on EVERY <AccordionTrigger> (FR-16)', () => {
+  const triggerBlocks = [...iterationPanelSource.matchAll(/<AccordionTrigger[\s\S]*?>/g)];
+  for (const m of triggerBlocks) {
+    assert.ok(
+      /onFocus=\{handleFocus\}/.test(m[0]),
+      `every <AccordionTrigger> must wire onFocus={handleFocus}; missing on tag: ${m[0].slice(0, 120)}...`
+    );
+  }
+});
+
+test('dag-iteration-panel.tsx data-row-key uses itemValue (the iteration accordion key) so deriveAncestorLoopKeys still walks correctly (AD-5)', () => {
+  const matches = iterationPanelSource.match(/data-row-key=\{itemValue\}/g) ?? [];
+  assert.ok(
+    matches.length >= 2,
+    `data-row-key={itemValue} must appear in BOTH parentKind branches — found ${matches.length}`
+  );
+});
+
+test('dag-iteration-panel.tsx renders <DAGNodeRow> in BOTH parentKind branches so non-loop iteration.nodes children (e.g. legacy phase_planning step) are not silently dropped (FR-17)', () => {
+  // Pre-unify projects carry a synthetic `phase_planning` step inside
+  // for_each_phase iteration.nodes. The for_each_task branch already handles
+  // non-loop children via a <DAGNodeRow> fallthrough — the for_each_phase
+  // branch must mirror that exact behavior, otherwise any direct step / gate
+  // / conditional node inside iteration.nodes silently disappears from the
+  // rendered body.
+  //
+  // Source-text invariant: exactly two <DAGNodeRow JSX call sites in the
+  // file — one per parentKind branch.
+  const matches = iterationPanelSource.match(/<DAGNodeRow\b/g) ?? [];
+  assert.strictEqual(
+    matches.length,
+    2,
+    `expected exactly two <DAGNodeRow> JSX usages — one per parentKind branch (for_each_phase + for_each_task); found ${matches.length}. Non-loop nodes inside for_each_phase iteration.nodes (e.g. legacy phase_planning step) will be silently dropped if the for_each_phase branch lacks a <DAGNodeRow> fallthrough`
+  );
+
+  // Sanity: also confirm a phase iteration whose nodes contain a non-loop
+  // step is structurally the case the renderer must handle. Mirrors the
+  // pre-unify shape carried by legacy completed projects.
+  const phaseIterationWithLegacyStep: IterationEntry = {
+    index: 0,
+    status: 'completed',
+    corrective_tasks: [],
+    nodes: {
+      phase_planning: {
+        kind: 'step',
+        status: 'completed',
+        doc_path: 'plans/PROJ-PHASE-P01.md',
+        retries: 0,
+      },
+    },
+    commit_hash: null,
+  };
+  const phasePlanning = phaseIterationWithLegacyStep.nodes['phase_planning'];
+  assert.ok(phasePlanning !== undefined);
+  assert.strictEqual(isLoopNode(phasePlanning), false, 'phase_planning is a non-loop step node');
+});
+
+const PANEL_SOURCE = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), 'dag-iteration-panel.tsx'),
+  'utf8'
+);
+
+console.log("\nDAGIterationPanel FR-1/FR-3 source-shape tests\n");
+
+test("AD-1 deriveIterationBadgeLabel is imported", () => {
+  assert.ok(/deriveIterationBadgeLabel/.test(PANEL_SOURCE),
+    "panel must import deriveIterationBadgeLabel (AD-1)");
+});
+
+test("FR-1 panel renders <NodeStatusBadge ...> on the trigger (not the bare hideLabel SpinnerBadge)", () => {
+  assert.ok(/<NodeStatusBadge/.test(PANEL_SOURCE),
+    "trigger must render NodeStatusBadge (FR-1)");
+});
+
+test("DD-1 iconOnly is wired to iteration.status === 'completed'", () => {
+  assert.ok(/iteration\.status\s*===\s*['"]completed['"]/.test(PANEL_SOURCE),
+    "iconOnly must be conditional on iteration.status === 'completed' (DD-1)");
+});
+
+test("renderStatusIcon helper retired", () => {
+  assert.ok(!/function renderStatusIcon\b/.test(PANEL_SOURCE),
+    "renderStatusIcon helper is replaced by NodeStatusBadge call sites (FR-1)");
+});
+
+test("FR-11 phase-iteration DocumentLink label is 'Phase Plan'", () => {
+  assert.ok(/label="Phase Plan"/.test(PANEL_SOURCE),
+    "phase iteration trigger DocumentLink must be 'Phase Plan' (FR-11)");
+});
+
+test("FR-11 task-iteration DocumentLink label is 'Task Handoff', not 'Doc'", () => {
+  assert.ok(/label="Task Handoff"/.test(PANEL_SOURCE),
+    "task iteration trigger DocumentLink must be 'Task Handoff' (FR-11)");
+  assert.ok(!/label="Doc"/.test(PANEL_SOURCE),
+    "literal 'Doc' label is forbidden in dag-iteration-panel.tsx (FR-11)");
+});
+
+test("FR-12 task-iteration ExternalLink renders icon='github' with label='Commit'", () => {
+  assert.ok(/icon="github"/.test(PANEL_SOURCE),
+    "panel must pass icon='github' on commit ExternalLink (FR-12)");
+  assert.ok(/label="Commit"/.test(PANEL_SOURCE),
+    "panel must pass label='Commit' on commit ExternalLink (FR-12)");
+});
+
+test("DD-8 task-iteration ExternalLink forwards full commit hash as title", () => {
+  assert.ok(/title=\{iteration\.commit_hash[^}]*\}/.test(PANEL_SOURCE) ||
+            /title=\{commitData\.full[^}]*\}/.test(PANEL_SOURCE) ||
+            /title=\{[^}]*commit[_.]hash[^}]*\}/.test(PANEL_SOURCE),
+    "panel must forward the full commit hash as ExternalLink title (DD-8)");
+});
+
+// ─── P04-T04: Phase iteration body indent + chevron column reservation ────────
+
+console.log("\nDAGIterationPanel — P04-T04 indent wrapper + chevron slot (FR-8, FR-9, DD-5, DD-6)\n");
+
+test("FR-8/DD-5 phase iteration body wraps task list with left padding + left rule", () => {
+  // The body container must use both left padding and a left border
+  // (border-l) on the body wrapper inside AccordionContent.
+  assert.ok(/border-l[^"]*pl-/.test(PANEL_SOURCE) || /pl-[^"]*border-l/.test(PANEL_SOURCE),
+    "phase iteration body wrapper must include border-l + pl-* classes (FR-8, DD-5)");
+});
+
+test("FR-9/DD-6 phase trigger lands the auto-rendered chevron at the row's right edge via Header flex-1", () => {
+  // Once the inner wrapper gives the AccordionPrimitive.Header (rendered as <h3>)
+  // flex-1 + min-w-0, the trigger button fills the row width and shadcn's
+  // ChevronDownIcon lands at the right edge via the
+  // [&_data-[slot=accordion-trigger-icon]]:ml-auto rule on AccordionTrigger.
+  // No phantom chevron-slot is required.
+  assert.ok(/\[&>h3\]:flex-1/.test(PANEL_SOURCE),
+    "phase trigger inner wrapper must give Header flex-1 so the auto-chevron lands at the row's right edge (FR-9, DD-6)");
+});
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
+
+// ─── P04-T03: Footer block removal + verdictPill inline wiring ───────────────
+
+console.log("\nDAGIterationPanel — P04-T03 footer removal + verdictPill (FR-16, AD-8, DD-11)\n");
+
+test("FR-16 phase-iteration body has no border-t footer block", () => {
+  // The duplicated footer (border-t + Phase Report/Phase Review links)
+  // is removed; verdict surfaces on the phase_review row itself.
+  assert.ok(!/border-t pl-2/.test(PANEL_SOURCE),
+    "phase iteration footer (border-t pl-2) must be removed (FR-16)");
+});
+
+console.log("\nDAGIterationPanel FR-18 legacy-fallback regression assertions\n");
+
+test("FR-18 legacy phase iteration with phase_planning child + no doc_path keeps fallback rendering shape", () => {
+  // Source-shape proxy: the panel must read iteration.nodes['phase_planning']
+  // as a fallback when iteration.doc_path is null/absent.
+  assert.ok(/iteration\.nodes\[['"]phase_planning['"]\]/.test(PANEL_SOURCE),
+    "panel must reference iteration.nodes['phase_planning'] for legacy fallback (FR-18)");
+});
+
+test("FR-18 legacy task iteration with task_handoff child + no doc_path keeps fallback rendering shape", () => {
+  assert.ok(/iteration\.nodes\[['"]task_handoff['"]\]/.test(PANEL_SOURCE),
+    "panel must reference iteration.nodes['task_handoff'] for legacy fallback (FR-18)");
+});
+
+test("DD-4 italic-fallback class chain still present when both doc_path and legacy node yield null", () => {
+  assert.ok(/italic text-muted-foreground/.test(PANEL_SOURCE),
+    "italic-fallback iteration name treatment retained (DD-4)");
+});
+
+test("FR-18 deriveCurrentPhase still walks legacy phase_planning child", () => {
+  // dag-timeline-helpers.ts line 288-290: phase_planning legacy branch
+  const helpersSource = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), 'dag-timeline-helpers.ts'),
+    'utf8'
+  );
+  assert.ok(/phase_planning/.test(helpersSource),
+    "deriveCurrentPhase must keep its phase_planning legacy fallback (FR-18)");
+});
+
+test("FR-17/DD-13 phase iteration trigger wrapper carries pr-3 gutter", () => {
+  // Both phase- and task-iteration trigger wrapper divs (the
+  // <div className="...flex items-center gap-2 rounded-md hover:bg-accent/50 ...">)
+  // must include the pr-3 gutter token. Match the trailing flex-row class chain
+  // with optional leading utilities (e.g. `relative`) so future additive
+  // refactors don't churn this assertion.
+  const matches = PANEL_SOURCE.match(/className="[^"]*flex items-center gap-2 rounded-md hover:bg-accent\/50[^"]*"/g) ?? [];
+  assert.ok(matches.length >= 2, `expected at least 2 trigger wrappers, got ${matches.length}`);
+  for (const m of matches) {
+    assert.ok(m.includes('pr-3'), `trigger wrapper missing pr-3 gutter: ${m} (FR-17, DD-13)`);
+  }
+});
