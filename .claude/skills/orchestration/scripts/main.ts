@@ -1,3 +1,4 @@
+// Pipeline engine entry point — delegates to lib/engine.ts for event processing.
 import { fileURLToPath } from 'node:url';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
